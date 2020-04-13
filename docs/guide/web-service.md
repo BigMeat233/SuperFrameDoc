@@ -2,12 +2,10 @@
 
 ## 启动Web服务
 
-通过创建Corejs的ServiceCore组件实例启动Web服务，通过调整ServiceCore实例化时的[配置TODO](/TODO)控制Web服务运行参数。
+通过创建Corejs的ServiceCore组件实例启动Web服务，通过调整ServiceCore实例化配置控制Web服务运行参数。
 
 ::: warning 注意
-
 默认配置下，ServiceCore将运行在3000端口。
-
 :::
 
 样例中使用默认配置启动了ServiceCore：
@@ -53,9 +51,7 @@ serviceCore.start((err) => {
 ServiceCore在启动过程中默认使用node原生的```http.createServer()```或```https.createServer()```创建最终承载Web服务的Server实例。如果有特殊场景需要变更Server实例的构建过程，可以在执行启动前对ServiceCore中的```createServer```属性进行更改以达到自定义Server构建过程的目的。
 
 ::: warning 注意
-
 自定义Server构建过程时，```createServer```方法中需要包含Server实例构建和启动监听逻辑
-
 :::
 
 样例将以默认Server构建过程演示变更Server构建过程的使用方式：
@@ -88,18 +84,16 @@ serviceCore.start();
 
 ## 请求处理模型
 
-![请求处理模型](/images/lifecycle.jpg)
+![请求处理模型](/images/请求处理流程.jpg)
 
 ## 全局拦截器
 
 **ServiceCore拦截器为全局拦截器，在ServiceCore启动时，封装拦截器为Express标准中间件挂载至Express中间件列表的最前端以实现拦截全部用户请求功能**，因此接收到用户请求时，可以在全局拦截器中决定是否放行此次请求进入下游处理。若在全局拦截器执行过程中产生了未捕获的异常，将进入[错误拦截器](#错误拦截器)中处理。
 
 ::: warning 注意
-
 默认行为下，如果用户请求的路径未能匹配到任何一个Handler，则认为请求无效，直接返回404状态码，不再进入后续全局中间件和Handler处理流程。
 
 如果在ServiceCore全局中间件中使用了静态资源中间件（如：```express.static```），在默认全局拦截器行为下将导致大多数资源请求无效。这种场景下，需要**变更全局拦截器拦截逻辑放行相关资源请求**或**将静态资源中间件挂载至Handler维度**。
-
 :::
 
 在ServiceCore启动前，可以对实例```globalInterceptor```属性进行更改以达到自定义全局拦截器的目的。
@@ -126,9 +120,7 @@ serviceCore.start();
 **ServiceCore设置的中间件为全局中间件，支持所有Express生态中间件**，比如body-parser、multer等。
 
 ::: warning 注意
-
 如果在全局中间件中使用了静态资源中间件需要修改[全局拦截器](#全局拦截器)的默认处理逻辑，针对静态资源请求予以放行。
-
 :::
 
 **注意：Handler级别可以根据用户请求情况（请求路径、请求参数）分别设置中间件列表，同样支持所有Express生态中间件**，全局中间件执行完成后才会进入Handler处理，即：执行Handler级别中间件时，全局中间件已经全部执行完成。
@@ -174,10 +166,8 @@ serviceCore.start();
 **ServiceCore设置的错误拦截器在ServiceCore启动时，将会被封装为Express错误中间件挂载至Express中间件列表的最末端**，故错误拦截器与Express错误拦截表现相同：仅可捕获同步异常（全局拦截器执行阶段、全局中间件执行阶段），异步产生的异常需要手动方式进行捕获（可参考Express文档中对错误捕获的相关描述）。
 
 ::: warning 注意
-
 - Handler处理过程中未捕获的异常将在Handler[统一错误处理](/guide/request-handler.html#统一错误处理)中被捕获，与ServiceCore错误拦截器无关。
 - 设置Express错误拦截器时函数入参列表必须为```(err, req, res, next)```，而在设置ServiceCore错误拦截器时，将会自动包装传入的函数为4参数函数挂载至Express，无需关注入参数量。
-
 :::
 
 样例将以默认错误拦截器演示变更错误拦截器的使用方式：

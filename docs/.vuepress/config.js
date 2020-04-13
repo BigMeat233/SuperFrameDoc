@@ -26,6 +26,8 @@ module.exports = {
             'web-service',
             'request-handler',
             'log-collectting',
+            'logger-introduce',
+            'logger-group-introduce',
             'cluster-manager',
             'default-value',
           ],

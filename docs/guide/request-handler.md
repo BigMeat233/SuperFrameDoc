@@ -34,7 +34,7 @@ serviceCore.start();
 
 ## Handler处理流程
 
-[Handler处理流程](/images/test.png)
+![Handler处理流程](/images/Handler处理流程.jpg)
 
 ## Handler初始化
 
@@ -146,10 +146,8 @@ serviceCore.start();
 - 执行```next(data)```：核心流程将分发请求至[统一结束处理](#统一结束处理)。
 
 ::: warning 注意
-
 - 请求预处理默认直接执行```next()```进入后处理阶段。
 - 执行```next(data)```时，data可能为```null```或```undefined```，而中间件阶段的流程控制方法入参为```null```或```undefined```表示执行下一个中间件。
-
 :::
 
 样例实现了在Handler预处理阶段处理基础入参：
@@ -204,10 +202,8 @@ serviceCore.start();
 - 执行```next(data)```：核心流程将分发请求至[统一结束处理](#统一结束处理)。
 
 ::: warning 注意
-
 - 请求后处理的默认行为是：尝试根据请求方式构建Method Handler的方法名，若Method Handler方法在Handler有定义则直接调用；否则调用```_defaultHandler()```，此方法默认直接向客户端返回404状态码。
 - 若后处理阶段即将结束时执行了```next()```，Handler将认为调用```next(undefined)```，将分发请求至[统一结束处理](#统一结束处理)。
-
 :::
 
 ## 统一结束处理
@@ -215,11 +211,9 @@ serviceCore.start();
 在Handler处理任意阶段调用了```next(data)```将进入统一结束处理。此阶段为请求处理的末端，用于统一向客户端返回业务请求处理结果。通过重写```onFinished()```自定义统一结束处理逻辑。
 
 ::: warning 注意
-
 - 在中间件阶段中，执行```next(null)```或```next(undefined)```时，Handler将分发下一个中间件而不是进入统一结束处理。
 - 在预处理阶段中，执行```next(null)```或```next(undefied)```时表现与中间件阶段不同，此时Handler核心流程将进入统一结束处理。
 - 在后处理阶段中，执行```next()```与执行```next(undefined)```表现一致，此时Handler核心流程将进入统一结束处理。
-
 :::
 
 默认行为下，统一结束处理使用```res.status(200).send()```向用户返回流程控制方法```next(data)```带入的```data```。
