@@ -20,17 +20,13 @@ LoggerCore是生产[日志输出组](#日志输出组)的工厂，而每个日�
 **在LoggerCore层面上可以配置日志输出器的基础配置参数，在配置输出器列表时可以进行个性化配置，优先级更高**。LoggerCore在创建输出器实例时，将迭代输出器配置列表，将个性化配置合并至基础配置中得到最终输出器配置。
 :::
 
-## 输出器模型
-
-[输出器模型](/images/test.png)
-
 ## 日志输出器
 
 日志输出器可以直接使用，也可以通过LoggerCore植入日志输出组中使用。[自定义输出器](/guide/logger-customizing.html)必须继承[基础输出器](/guide/logger-introduce.html#基础输出器)。推荐学习路线为：
 
-- 先学习[基础输出器](/guide/logger-introduce.html#基础输出器)了解日志输出器的基础配置、生命周期、输出模型。
-- 再学习[日期输出器](/guide/logger-introduce.html#日期输出器)和[文件输出器](/guide/logger-introduce.html#文件输出器)的基本使用
-- 最后学习[自定义输出器](/guide/logger-customizing.html)
+- 先学习[基础输出器](/guide/logger-introduce.html#基础输出器)了输出器的基础配置。
+- 再学习[日期输出器](/guide/logger-introduce.html#日期输出器)和[文件输出器](/guide/logger-introduce.html#文件输出器)的增量配置和使用方式。
+- 最后学习[日志输出模型](/guide/logger-introduce.html#输出器模型)和[自定义输出器](/guide/logger-customizing.html)
 
 日志输出器有三个核心API：
 

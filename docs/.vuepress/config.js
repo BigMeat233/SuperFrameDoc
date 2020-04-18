@@ -10,6 +10,7 @@ module.exports = {
   themeConfig: {
     logo: '/images/logo.png',
     smoothScroll: true,
+    sidebarDepth: 2,
     nav: [
       { text: '首页', link: '/' },
       { text: '教程', link: '/guide/' },
