@@ -34,13 +34,13 @@ Corejs由两个部分组成：核心组件和辅助API。
 
 ## 与Express.js的关系
 
-Corejs的Web服务核心组件ServiceCore使用Express.js作为基础框架。ServiceCore启动时，会按照以下流程创建Express实例：
+Corejs的Web服务组件ServiceCore使用Express.js作为基础框架。ServiceCore启动时，会按照以下流程创建Express实例：
 
 - 将全局拦截器封装为Express标准中间件挂载至Express中间件列表的最前端，用于拦截所有用户请求。
 - 将全局中间件列表中的中间件逐个挂载至Express中间件列表，使有效请求进入中间件管道且兼容Express生态。
-- 将Handler列表中每个Handler的请求路径封装为Express路由中间件并挂载至Express实例，用于对请求路径执行个性化处理。
+- 将Handler列表中每个Handler的请求路径封装为Express路由中间件挂载至Express实例，用于对请求路径执行针对性处理。
 - 将全局错误拦截器封装为Express标准中间件挂载至Express中间件列表的最末端，用于捕获处理过程中产生的异常。
 
 ::: warning 注意
-设置Express错误处理中间件时，入参列表必须为```(err, req, res, next)```，而在设置ServiceCore错误拦截器时，将会自动包装错误拦截器为4参数错误处理中间件挂载至Express，无需关注入参个数。
+设置Express错误处理中间件时，参数列表必须为```(err, req, res, next)```，而在设置错误拦截器时，ServiceCore将会自动包装错误拦截器为标准错误处理中间件挂载至Express，无需关注参数列表。
 :::
