@@ -7,14 +7,14 @@ actionText: 快速上手 →
 actionLink: /guide/
 features:
 - title: 简单
-  details: 核心API仅十余个，极低学习成本向Node全栈开发过渡，无需了解底层知识，专注业务层开发。
+  details: 核心API仅十余个，以极低学习成本向Node全栈开发过渡，无需了解底层知识，专注业务层开发。
 - title: 友好
-  details: 兼容Express中间件生态，支持中间件动态调用和挂载，支持全局/局部中间件配置。
+  details: 兼容Express中间件生态，支持中间件动态挂载和调用，支持全局/局部中间件配置。
 - title: 高效
-  details: 内置日志输出器、进程管理模型，开箱即用。
+  details: 内置Web服务器、日志输出器、进程管理模型，开箱即用。
 footer: MIT Licensed | Copyright © 2020-present Douzi
 ---
-### 仅需三步启动服务
+### 仅三步启动Web服务
 
 ```javascript
 const Core = require('node-corejs');

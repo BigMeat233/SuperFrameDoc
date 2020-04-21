@@ -2,15 +2,21 @@
 
 ## 介绍
 
-**Handler必须绑定至ServiceCore使用。在ServiceCore拦截器、中间件阶段执行完成后进入Handler处理**。ServiceCore每次接收到有效的用户请求时，将会根据与请求匹配的Handler创建Handler实例，并将用户请求导入Handler实例执行处理。即：ServiceCore是Handler执行的容器，负责全局级别处理；Handler根据用户请求路径执行个性化处理。
+**Handler必须绑定至ServiceCore使用。在ServiceCore拦截器、中间件阶段完成后进入Handler处理**。ServiceCore每次接收到有效的用户请求时，将会使用与请求匹配的Handler创建Handler实例，并将用户请求导入Handler实例处理。即：ServiceCore是Handler执行的容器，负责全局级别处理；Handler根据用户请求路径执行个性化处理。
 
-实现自定义Handler时需要继承```Core.Handler```并重写相关方法，在本章中将介绍常用场景下如何定制Handler。
+实现自定义Handler时需要继承```Core.Handler```并重写相关方法，在本章中将介绍常用场景下如何自定义Handler。
 
 ## 设置请求路径
 
-ServiceCore在执行绑定Handler时，将获取绑定列表中每个Handler设置的请求路径，对请求路径做出校正并缓存在ServiceCore，校正规则为：**若Handler设置的请求路径不以```'/'```开头，将自动附加```'/'```作为请求路径前缀。**
+ServiceCore绑定Handler时，将获取待绑定列表中每个Handler设置的请求路径，对请求路径做出校正并缓存在ServiceCore。
 
-在ServiceCore全局拦截器默认行为中，**收到用户请求时会检查用户请求路径是否命中缓存中的某个Handler设置的请求路径，若未命中直接返回404状态码，不再执行后续处理。**
+::: tip 请求路径校正规则
+若Handler设置的请求路径不以```'/'```开头，将自动附加```'/'```作为请求路径前缀。
+:::
+
+::: warning 注意
+在ServiceCore全局拦截器默认行为下，收到用户请求时会**检查用户请求路径是否命中缓存中的某个Handler设置的请求路径**，若未命中直接返回404状态码，不再进入中间件阶段和Handler处理阶段。
+:::
 
 通过重写Handler的```static getRoutePath()```方法设置请求路径，**实现Handler时必须设置请求路径。**
 
@@ -20,7 +26,7 @@ ServiceCore在执行绑定Handler时，将获取绑定列表中每个Handler设�
 const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  // 复写getRoutePath()时仅支持return方式设置请求路径
+  // 重写getRoutePath()时仅支持return方式设置请求路径
   static getRoutePath() {
     return '/Test.do';
   }
@@ -40,12 +46,13 @@ serviceCore.start();
 
 **每次ServiceCore接收到有效请求时，将创建请求路径对应Handler的实例，此时将执行实例的```initHandler()```发起初始化指令。初始化过程中产生了未捕获的异常将被[统一错误处理](#统一错误处理)捕获。**
 
-Handler初始化操作中一般创建请求所需的静态资源和动态资源，这些资源可以挂载至```this```中在整个Handler中共享。
-
+::: tip 提示
+Handler初始化操作中一般进行创建请求所需的静态资源和动态资源，这些资源可以挂载至```this```中在整个Handler中共享。
 - 动态资源：与用户请求相关的资源，比如：链路追踪器、日志输出器等。
 - 静态资源：与用户请求无关的资源，比如：数据库操作实例、RPC通信实例等。
+:::
 
-ServiceCore执行Handler初始化通过```await initHandler()```方式进行，因此，在初始化时进行异步操作时可以使用Promise。
+ServiceCore执行Handler初始化通过```await initHandler()```方式，因此，进行异步操作时可以使用```Promise```。
 
 样例中实现了同步/异步初始化操作：
 
@@ -95,14 +102,15 @@ serviceCore.start();
 
 ## Handler中间件
 
-**Handler中间件支持所有Express生态中间件，支持[动态中间件](/guide/dynamic-middleware)**。本节仅描述设置Handler级别中间件的用法，[动态中间件](/guide/dynamic-middleware)将于高阶功能中描述。**中间件执行过程中产生了未捕获的异常将被[统一错误处理](#统一错误处理)捕获。**
+**Handler中间件支持所有Express生态中间件，支持[动态中间件](/guide/dynamic-middleware)**。本节仅描述设置Handler级别中间件的基础用法，[动态中间件](/guide/dynamic-middleware)将于高阶功能中描述。**中间件执行过程中产生了未捕获的异常将被[统一错误处理](#统一错误处理)捕获。**
 
+::: tip 提示
 动态中间件包括：
-
 - 处理每个用户请求时，根据实际请求情况动态生成中间件列表。
-- 执行每个中间件时，根据上一个中间件结果或实际请求情况控制中间件执行行为，比如丢弃执行结果跳过执行等。
+- 执行每个中间件时，根据上一个中间件结果或实际请求情况控制中间件执行行为，比如丢弃执行结果、跳过执行等。
+:::
 
-自定义Handler时，需要重写```getMiddlewares()```配置Handler级别的中间件，支持同步/异步设置中间件。当Handler初始化完成后会调用```getMiddlewares()```获取待执行的中间件列表进入Handler中间件阶段。
+自定义Handler时，需要重写```getMiddlewares()```配置Handler中间件，支持同步/异步设置中间件。当Handler初始化完成后将调用```await getMiddlewares()```获取待执行的中间件列表进入Handler中间件阶段。
 
 样例中实现了同步/异步构建中间件列表：
 
@@ -211,9 +219,9 @@ serviceCore.start();
 在Handler处理任意阶段调用了```next(data)```将进入统一结束处理。此阶段为请求处理的末端，用于统一向客户端返回业务请求处理结果。通过重写```onFinished()```自定义统一结束处理逻辑。
 
 ::: warning 注意
-- 在中间件阶段中，执行```next(null)```或```next(undefined)```时，Handler将分发下一个中间件而不是进入统一结束处理。
-- 在预处理阶段中，执行```next(null)```或```next(undefied)```时表现与中间件阶段不同，此时Handler核心流程将进入统一结束处理。
-- 在后处理阶段中，执行```next()```与执行```next(undefined)```表现一致，此时Handler核心流程将进入统一结束处理。
+- 在中间件阶段中，执行```next()```、```next(null)```或```next(undefined)```时，Handler将分发下一个中间件而不是进入统一结束处理。
+- 在预处理阶段中，执行```next()```时与中间件阶段表现相同，而执行```next(null)```或```next(undefied)```时表现与中间件阶段不同，此时Handler核心流程将进入统一结束处理。
+- 在后处理阶段中，执行```next()```、```next(null)```或```next(undefined)```时，Handler将进入统一结束处理。
 :::
 
 默认行为下，统一结束处理使用```res.status(200).send()```向用户返回流程控制方法```next(data)```带入的```data```。
