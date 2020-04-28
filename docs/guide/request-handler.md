@@ -111,7 +111,7 @@ serviceCore.start();
 
 ## Handler中间件
 
-**Handler中间件支持所有Express生态中间件，支持[动态中间件](/guide/dynamic-middleware)**。本节仅描述Handler级别中间件的基础用法，[动态中间件](/guide/dynamic-middleware)将于高阶功能中描述。**中间件执行过程中产生了未捕获的异常将进入[统一错误处理](#统一错误处理)。**
+**Handler中间件支持所有Express生态中间件，支持[动态中间件](/guide/dynamic-middleware)**。本节仅介绍Handler级别中间件的基础用法，[动态中间件](/guide/dynamic-middleware)将于高阶功能中介绍。**中间件执行过程中产生了未捕获的异常将进入[统一错误处理](#统一错误处理)。**
 
 ::: tip 提示
 动态中间件包括：

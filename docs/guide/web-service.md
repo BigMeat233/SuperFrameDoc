@@ -227,14 +227,14 @@ ServiceCore支持通过外部注入日志输出器的方式进行日志收集，
 - ```level```：日志等级
   > 通过在实例化ServiceCore前修改宏的方式实现对日志输出等级的变更：
   > | 宏名称                                         | 描述        | 默认值         |
-  > | :-------------------------------------------- |:----------:| :------------:|
+  > | :-------------------------------------------- |:---------- | :------------ |
   > | ```Core.Macro.SERVICE_CORE_INFOS_LOG_LEVEL``` | 信息日志等级 | ```'infos'``` |
   > | ```Core.Macro.SERVICE_CORE_WARNS_LOG_LEVEL``` | 警告日志等级 | ```'warns'``` |
   > | ```Core.Macro.SERVICE_CORE_ERROR_LOG_LEVEL``` | 错误日志等级 | ```'error'``` |
 - ```message```：文案内容
-  > 通过在实例化ServiceCore前修改宏的方式实现对日志输出文案的变更：
+  > 通过在实例化ServiceCore前修改宏的方式实现对日志输出内容的变更：
   > | 宏名称                                                        | 描述                                   | 输出等级                                       |
-  > | :----------------------------------------------------------- | :-----------------------------------: | :-------------------------------------------: |
+  > | :----------------------------------------------------------- | :-----------------------------------  | :-------------------------------------------  |
   > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```        | 当前状态下不允许执行操作                  | ```Core.Macro.SERVICE_CORE_WARNS_LOG_LEVEL``` |
   > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_HANDLER```      | 待绑定的Handler类型无效                  | ```Core.Macro.SERVICE_CORE_WARNS_LOG_LEVEL``` |
   > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_ROUTE_PATH```   | 待绑定的Handler请求路径无效              | ```Core.Macro.SERVICE_CORE_WARNS_LOG_LEVEL``` |
@@ -246,7 +246,7 @@ ServiceCore支持通过外部注入日志输出器的方式进行日志收集，
 - ```funcName```：调用方法名
   > 通过在实例化ServiceCore前修改宏的方式实现对调用方法名的变更：
   > | 宏名称                                        | 默认值           |
-  > | :------------------------------------------- | :-------------: |
+  > | :------------------------------------------- | :-------------  |
   > | ```Core.Message.SERVICE_CORE_FUNCNAME_LOG``` | ```'服务核心'``` |
 
 可以使用Corejs内置输出器进行日志收集：
