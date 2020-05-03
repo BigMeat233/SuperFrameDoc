@@ -5,7 +5,7 @@
 Corejs提供[日志输出器](#日志输出器)和[日志输出组](#日志输出组)进行单点/组合日志收集。日志输出组必须依赖Corejs日志组件[LoggerCore](/guide/logger-group-introduce.html#loggercore)使用。
 
 ::: tip 说明
-**[日志输出组](#日志输出组)中可以嵌入一个或多个[日志输出器](#日志输出器)以实现日志组合收集，其本质上是一种特殊类型的日志输出器**。日志输出组统一管理其内部日志输出器的生命周期，使用输出组进行输出行为时，输出组将逐个调用内置输出器的```log()```实现多点输出。
+**[日志输出组](#日志输出组)中可以聚合一个或多个[日志输出器](#日志输出器)以实现日志组合收集，其本质上是一种特殊类型的日志输出器**。日志输出组统一管理其内部日志输出器的生命周期，使用输出组进行输出行为时，输出组将逐个调用内置输出器的```log()```实现多点输出。
 :::
 
 **日志输出器**和**日志输出组**有相同的生命周期和输出API，即：
@@ -60,5 +60,5 @@ Corejs内置了多种日志输出器：
 推荐学习路线为（需要对日志输出器有一定了解）：
 
 - 先学习[LoggerCore](/guide/logger-group-introduce.html#loggercore)的[运行原理](/guide/logger-group-introduce.html#运行原理)。
-- 再学习[LoggerCore](/guide/logger-group-introduce.html#loggercore)的日常使用，掌握[行为触发器](/guide/logger-group-introduce.html#行为触发器)在[日志输出器](/guide/logger-introduce)生命周期中的作用。
+- 再学习[LoggerCore](/guide/logger-group-introduce.html#loggercore)的日常使用，掌握[行为触发](/guide/logger-group-introduce.html#行为触发)在[日志输出器](/guide/logger-introduce)生命周期中的作用。
 - 最后学习[自定义输出组](/guide/logger-group-customizing.html)将日志输出与业务结合。
