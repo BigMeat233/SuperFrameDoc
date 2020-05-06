@@ -53,9 +53,9 @@ Corejs内置了多种日志输出器：
 - [日期输出器](/guide/logger-introduce.html#日期输出器)
 - [文件输出器](/guide/logger-introduce.html#文件输出器)
 
-## 日期输出组
+## 日志输出组
 
-**日志输出组必须配合LoggerCore使用**。在执行```createLogger()```时，[LoggerCore](/guide/logger-group-introduce.html#loggercore)首先**根据传入的日志输出组类型创建对应的输出组实例**（默认使用[基础输出组](/guide/logger-group-introduce)），**然后根据实例化LoggerCore时的输出器配置创建对应的输出器实例植入先前创建的输出组实例中**。可以通过[定制输出组](/guide/logger-group-customizing)的方式使日志收集与业务层结合。
+**日志输出组必须配合LoggerCore使用**。在执行```createLogger()```时，[LoggerCore](/guide/logger-group-introduce.html#loggercore)首先**根据传入的日志输出组类型创建对应的输出组实例**（默认使用[基础输出组](/guide/logger-group-introduce.html#基础输出组)），**然后根据实例化LoggerCore时的输出器配置创建对应的输出器实例植入先前创建的输出组实例中**。可以通过[自定义输出组](/guide/logger-group-customizing)的方式使日志收集与业务层结合。
 
 推荐学习路线为（需要对日志输出器有一定了解）：
 

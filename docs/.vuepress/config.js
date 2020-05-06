@@ -2,8 +2,13 @@ const path = require('path');
 
 module.exports = {
   dest: './dist',
-  title: 'Corejs Doc',
-  description: 'Node-Corejs文档',
+  locales: {
+    '/': {
+      lang: 'zh-CN',
+      title: 'Corejs Doc',
+      description: 'Node-Corejs文档',
+    },
+  },
   head: [
     ['link', { rel: 'icon', href: '/images/logo.png' }],
   ],
