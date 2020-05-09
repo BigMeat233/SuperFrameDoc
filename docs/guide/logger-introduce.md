@@ -8,15 +8,15 @@
 
 通常，Corejs内置输出器实例化时需要配置**运行环境**、**最小输出等级**和**功能参数**构成的对象，即```{ env, level, params }```。
 
-- ```env```：输出器当前的运行环境，默认值为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
+- ```env```：输出器的运行环境，默认值为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
 
   运行环境将影响输出器行为：
 
   - 当运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志将统一输出到控制台。在[自定义输出器](/guide/logger-customizing.html)时尽量遵守此规则。
-  - 当运行环境不为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志将根据实际的逻辑产生相应的输出行为。
+  - 当运行环境不为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志输出器将根据实际的逻辑产生相应的输出行为。
 
-  ::: tip 提示
-  对于Corejs内置的[日期输出器](#日期输出器)和[文件输出器](#文件输出器)，运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志将输出至控制台。在输出器启动和关闭时，不再执行归档和清理计算，也不再操作系统文件句柄资源。
+  ::: tip 说明
+  对于Corejs内置的[日期输出器](#日期输出器)和[文件输出器](#文件输出器)，运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志将输出至控制台；在输出器启动和关闭时，不再执行归档和清理计算，也不再操作系统文件句柄资源。
   :::
 
 - ```level```：最小日志输出等级名称或别名，输出器仅输出权重大于等于此输出等级的日志。

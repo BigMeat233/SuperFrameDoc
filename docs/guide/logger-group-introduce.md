@@ -1,6 +1,6 @@
 # 日志输出组
 
-日志输出组支持聚合一个或多个[日志输出器](/guide/logger-introduce)应用于多点日志收集的场景。**日志输出组无法直接实例化，需要依赖[LoggerCore](#loggercore)执行```createLogger()```时创建输出组实例**。
+日志输出组支持聚合一个或多个[日志输出器](/guide/logger-introduce)应用于多点日志收集的场景。**日志输出组无法直接实例化，需要依赖[LoggerCore](#loggercore)执行```createLogger()```创建输出组实例**。
 
 ::: tip 说明
 本质上，日志输出组是一类特殊的[日志输出器](/guide/logger-introduce)，它们拥有相同的生命周期和使用方式。即：在业务层中输出器/组使用以下三个API管理生命周期或执行输出动作：
@@ -77,7 +77,7 @@ LoggerCore在实例化时接收**输出器配置列表**，在执行```createLog
 ::: warning 注意
 输出器实例的创建行为完全在LoggerCore中进行，**LoggerCore将自动包装输出器实例为输出器对象**。
 
-**在执行```createLogger()```之前**，可以对LoggerCore实例```onBuildLogger```属性进行更改以变更输出器实例创建行为。默认行为下，**LoggerCore将使用输出器配置列表中的个性化配置**合并至**基础配置得到最终的输出器配置创建输出器实例。**
+**在执行```createLogger()```之前**，可以对LoggerCore实例的```onBuildLogger```属性进行更改以变更输出器实例创建行为。默认行为下，**LoggerCore将使用输出器配置列表中的个性化配置**合并至**基础配置**得到**最终的输出器配置**创建输出器实例。
 
 样例代码中使用默认行为演示如何变更输出器实例创建行为：
 
@@ -121,7 +121,132 @@ const logger = loggerCore.createLogger();
 
 ### 配置说明
 
-TODO - 
+LoggerCore在实例化时接收**基础配置**和**输出器配置列表**构成的对象，即：```{ id, env, level, params, loggers }```。
+
+- ```id```：LoggerCore的唯一标识，默认值为``` `LoggerCore_${generateRandomString(6, 'uln')}` ```。
+- ```env```：LoggerCore的运行环境，默认值为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
+
+  ::: danger 注意
+  **此配置将作为在```loggers```中对日志输出器进行针对性配置时```env```的默认值：**
+
+  - 如果没有配置日志输出器的```env```，则使用此配置的值。
+  - 如果配置了日志输出器的```env```，则使用实际配置的值。
+  :::
+
+  运行环境将影响LoggerCore行为：
+
+  - 当运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，**LoggerCore创建输出器实例时将忽略```loggers```配置**，仅创建一个使用```init```方式触发构建的[基础输出器](/guide/logger-introduce.html#基础输出器)。
+  - 当运行环境不为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，LoggerCore将根据实际配置创建日志输出器实例。
+
+- ```level```：最小日志输出等级名称或别名，输出组仅输出权重大于等于此输出等级的日志。
+
+  ::: danger 注意
+  **此配置将作为在```loggers```中对日志输出器进行针对性配置时```level```的默认值：**
+
+  - 如果没有配置日志输出器的```level```，则使用此配置的值。
+  - 如果配置了日志输出器的```level```，则使用实际配置的值。
+  :::
+
+  最小输出等级的默认值依赖于当前运行环境：
+
+  - 当运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```all```。
+  - 当运行环境不为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```error```。
+
+- ```params```：日志输出器的基础功能配置参数。
+
+  ::: danger 注意
+  **LoggerCore默认行为下通过```Object.assign()```将个性化配置合并至此配置得到最终配置创建日志输出器实例**。可以对LoggerCore实例的```onBuildLogger```属性进行更改以变更输出器实例的默认创建行为。
+  :::
+
+- ```loggers```：日志输出器配置列表。日志输出器配置对象结构为：```{ type, buildTrigger, startTrigger, closeTrigger, env, level, params  }```。
+  - ```type```：日志输出器的类型，可以使用Corejs内置输出器或[自定义输出器](/guide/logger-customizing.html)，默认值为```null```。
+    
+    ::: warning 注意
+    LoggerCore创建输出器时将对日志输出器的类型进行校验，如果设置了未继承自```Core.BaseLogger```的自定义输出器时，将认为类型无效不再创建输出器实例。
+    :::
+
+  - ```buildTrigger```：日志输出器的[构建触发方式](#输出器构建)，默认值为```'init'```。
+  - ```startTrigger```：日志输出器的[启动触发方式](#输出器启动)，默认值为```'none'```。
+  - ```closeTrigger```：日志输出器的[关闭触发方式](#输出器关闭)，默认值为```'none'```。
+  - ```env```：日志输出器的运行环境，默认值为LoggerCore的运行环境。
+  - ```level```：最小日志输出等级名称或别名，默认值为LoggerCore的最小日志输出等级名称或别名。
+  - ```params```：日志输出器的个性化功能配置参数，LoggerCore创建输出器实例时将使用```Object.assign()```将此配置合并至**基础功能配置参数**得到最终配置。
+
+### 样例代码
+
+样例代码中实现了多点日志收集：
+
+- 以秒为周期进行日志收集，归档目录为```./logs/Cycle_1s```：每秒内产生的日志体积超出1K时自动分割，且仅保留最近5秒内的日志。
+- 5秒内产生的日志归档至同一文件，文件路径为```./logs/Duration_5s/_.<%开始时间%>.[FN].log```：仅保留最后2个的归档文件（即：最近10秒内的日志）。
+
+```javascript
+const Core = require('node-corejs');
+
+const loggerCore = new Core.LoggerCore({
+  env: 'prod',
+  level: 'infos',
+  // 设置基础属性
+  params: {
+    sourcePath: './logs',
+    filePrefixAsSourcePath: true,
+    filePrefixAsFileName: false,
+    dateFormat: 'YYYY-MM-DD_HH:mm:ss',
+    keepDateNum: 2,
+    keepFileExt: true,
+  },
+  // 设置输出器配置列表
+  loggers: [{
+    // 日期输出器
+    type: Core.DateLogger,
+    buildTrigger: 'init', // 使每个输出组实例共享日期输出器
+    startTrigger: 'none',
+    closeTrigger: 'none',
+    params: {
+      filePrefix: 'Cycle_1s',
+      keepDateNum: 5,
+      maxSize: 1024,
+    },
+  }, {
+    // 文件输出器配置
+    type: Core.FileLogger,
+    buildTrigger: 'create', // 使每个输出组实例独享文件输出器
+    startTrigger: 'none',
+    closeTrigger: 'none',
+    params: {
+      filePrefix: 'Duration_5s',
+      fileName: '_',
+      auto: true,
+      timeout: 5000,
+      dateAsSourcePath: false,
+      dateAsFileName: true,
+    },
+  }],
+});
+
+let count = 0;
+
+setInterval(() => {
+  // 创建并启动输出组
+  const logger = loggerCore.createLogger();
+  logger.start();
+
+  for (let i = 0; i < 5; i++) {
+    // 执行日志输出
+    setTimeout(() => {
+      for (let j = 0; j < 10; j++) {
+        count += 1;
+        logger.log(new Error(`GroupLogger测试输出 -> ${count}`));
+      }
+    }, i * 1000);
+    // 日志输出完成后关闭输出组
+    if (i == 4) {
+      setTimeout(() => {
+        logger.close();
+      }, 4500);
+    }
+  }
+}, 5000);
+```
 
 ## 基础输出组
 
@@ -141,7 +266,7 @@ LoggerCore执行```createLogger()```时，**如果没有指定输出组类型，
     **```super()```执行过程中将自动执行```initLogger()```。若在实例化时执行过多业务逻辑，可能导致执行顺序与预期不符。因此，输出组实例化时仅使用原始特性缓存输出器列表，实际的初始化逻辑将在```initLogger()```中进行。**
     :::
 
-2. 输出组实例化即将结束时将自动触发**输出组初始化**。在输出组初始化过程中，将迭代```configs.params.loggerObjects```属性对输出器对象中的输出器实例进行缓存和分类：
+2. 输出组实例化即将结束时自动触发**输出组初始化**。在输出组初始化过程中，将迭代```configs.params.loggerObjects```属性对输出器对象中的输出器实例进行缓存和分类：
     - 将输出器实例推入输出组的```_loggers```属性。
     - 将使用```normal```方式触发启动的输出器实例推入输出组的```_needStartLoggers```属性。
     - 将使用```normal```方式触发关闭的输出器实例推入输出组的```_needCloseLoggers```属性。
@@ -152,7 +277,7 @@ LoggerCore执行```createLogger()```时，**如果没有指定输出组类型，
 **基础输出组默认不支持自动启动**，通常需要显式执行```start()```。
 :::
 
-1. 执行```super.start()```尝试执行启动，触发[基础输出器](/guide/logger-introduce.html#基础输出器)内置状态检测机制，启动失败时将直接向业务层返回```false```，不再执行实际启动逻辑。
+1. 执行```super.start()```尝试执行启动，触发[基础输出器](/guide/logger-introduce.html#基础输出器)内置状态检测机制。启动失败时将直接向业务层返回```false```，不再执行实际启动逻辑。
 
 2. 启动成功时，将迭代输出组的```_needStartLoggers```属性，执行每个输出器实例的```start()```启动输出器，并向业务层返回```true```表示输出组启动成功。
 
@@ -162,11 +287,13 @@ LoggerCore执行```createLogger()```时，**如果没有指定输出组类型，
 **基础输出组默认不支持自动关闭**，通常需要显式执行```close()```。
 :::
 
-1. 执行```super.close()```尝试执行关闭，触发[基础输出器](/guide/logger-introduce.html#基础输出器)内置状态检测机制，关闭失败时将直接向业务层返回```false```，不再执行实际关闭逻辑。
+1. 执行```super.close()```尝试执行关闭，触发[基础输出器](/guide/logger-introduce.html#基础输出器)内置状态检测机制。关闭失败时将直接向业务层返回```false```，不再执行实际关闭逻辑。
 
 2. 关闭成功时，将迭代输出组的```_needCloseLoggers```属性，执行每个输出器实例的```close()```关闭输出器，并向业务层返回```true```表示输出组关闭成功。
 
 
 ### 执行```log()```
 
-迭代输出组的```_loggers```属性，执行每个输出器实例的```log()```进行输出。
+1. 使用```onCheckState(BASE_LOGGER_STATE_TYPE_CAN_LOG)```检测输出组当前状态是否允许日志输出。不允许输出时将按照基础输出器的默认行为进行处理，不再执行实际输出逻辑。
+
+2. 输出器状态允许输出时，将迭代输出组的```_loggers```属性，逐个执行每个输出器实例的```log()```进行日志输出。

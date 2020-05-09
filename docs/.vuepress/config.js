@@ -35,7 +35,6 @@ module.exports = {
             'logger-introduce',
             'logger-group-introduce',
             'cluster-manager',
-            'default-value',
           ],
         }, {
           title: '进阶',
