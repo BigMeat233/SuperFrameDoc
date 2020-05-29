@@ -8,23 +8,23 @@
 
 通常，Corejs内置输出器实例化时需要配置**运行环境**、**最小输出等级**和**功能参数**构成的对象，即```{ env, level, params }```。
 
-- ```env```：输出器的运行环境，默认值为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
+- ```env```：输出器的运行环境，默认值为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
 
   运行环境将影响输出器行为：
 
-  - 当运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志将统一输出到控制台。在[自定义输出器](/guide/logger-customizing.html)时尽量遵守此规则。
-  - 当运行环境不为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志输出器将根据实际的逻辑产生相应的输出行为。
+  - 当运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志将统一输出到控制台。在[自定义输出器](/guide/logger-customizing.html)时尽量遵守此规则。
+  - 当运行环境不为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志输出器将根据实际的逻辑产生相应的输出行为。
 
   ::: tip 说明
-  对于Corejs内置的[日期输出器](#日期输出器)和[文件输出器](#文件输出器)，运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志将输出至控制台；在输出器启动和关闭时，不再执行归档和清理计算，也不再操作系统文件句柄资源。
+  对于Corejs内置的[日期输出器](#日期输出器)和[文件输出器](#文件输出器)，运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，日志将输出至控制台；在输出器启动和关闭时，不再执行归档和清理计算，也不再操作系统文件句柄资源。
   :::
 
 - ```level```：最小日志输出等级名称或别名，输出器仅输出权重大于等于此输出等级的日志。
 
   最小输出等级的默认值依赖于当前运行环境：
 
-  - 当运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```all```。
-  - 当运行环境不为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```error```。
+  - 当运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```all```。
+  - 当运行环境不为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```error```。
   
   ::: danger 注意
   若默认或指定的最小输出等级不在输出器的等级支持列表中时，则使用[等级选举](#等级选举)产生的**默认日志等级**作为默认值。关于**默认日志等级**的说明见[输出等级](#输出等级)。
@@ -174,9 +174,9 @@ Corejs内置输出器默认业务逻辑中需要使用**默认日志等级**、*
 
 - #### ```callStackOffset```
 
-  设置此配置或在调用```buildCallSnapshot()```之前修改输出器的```_callStackOffset```属性将设置构造调用栈时的偏移，默认值为：```Core.Macro.BASE_LOGGER_DEFAULT_CALLSTACK_OFFSET```。
+  设置此配置或在调用```buildCallSnapshot()```之前修改输出器的```_callStackOffset```属性将设置构造调用栈时的偏移，默认值为：```Core.Macros.BASE_LOGGER_DEFAULT_CALLSTACK_OFFSET```。
 
-  此配置将影响```buildCallSnapshot()```生成当前上下文调用信息时的调用栈偏移，用于过滤无意义的内部调用，一般情况下使用```Core.Macro.BASE_LOGGER_DEFAULT_CALLSTACK_OFFSET```作为偏移基数，执行自增或自减得到实际的调用栈偏移。
+  此配置将影响```buildCallSnapshot()```生成当前上下文调用信息时的调用栈偏移，用于过滤无意义的内部调用，一般情况下使用```Core.Macros.BASE_LOGGER_DEFAULT_CALLSTACK_OFFSET```作为偏移基数，执行自增或自减得到实际的调用栈偏移。
 
   ::: tip 提示
   当日志内容为```Error```类型时调用```buildCallSnapshot()```生成的调用栈不受此配置影响。
@@ -187,7 +187,7 @@ Corejs内置输出器默认业务逻辑中需要使用**默认日志等级**、*
   设置此配置或在调用```log()```之前修改输出器的```_checkStateInLog```属性将控制输出器在执行```log()```时是否检查当前状态，默认值为：```true```。
 
   ::: tip 提示
-  当此配置为```true```时，输出器在执行```log()```时将检查当前输出器是否处于开启状态，**若不处于开启状态将输出警告日志**。通过在实例化输出器前修改```Macro.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```修改默认警告日志内容。
+  当此配置为```true```时，输出器在执行```log()```时将检查当前输出器是否处于开启状态，**若不处于开启状态将输出警告日志**。通过在实例化输出器前修改```Macros.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```修改默认警告日志内容。
   :::
 
 - #### ```_checkStateInStart```
@@ -199,7 +199,7 @@ Corejs内置输出器默认业务逻辑中需要使用**默认日志等级**、*
   :::
 
   ::: tip 提示
-  当此配置为```true```时，输出器在执行```start()```时将检查当前输出器是否处于开启状态，**若处于开启状态则不执行启动逻辑仅输出警告日志**。通过在实例化输出器前修改```Macro.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```修改默认警告日志内容。
+  当此配置为```true```时，输出器在执行```start()```时将检查当前输出器是否处于开启状态，**若处于开启状态则不执行启动逻辑仅输出警告日志**。通过在实例化输出器前修改```Macros.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```修改默认警告日志内容。
   :::
 
 - #### ```_checkStateInClose```
@@ -211,7 +211,7 @@ Corejs内置输出器默认业务逻辑中需要使用**默认日志等级**、*
   :::
 
   ::: tip 提示
-  当此配置为```true```时，输出器在执行```close()```时将检查当前输出器是否处于关闭状态，**若处于关闭状态则不执行启动逻辑仅输出警告日志**。通过在实例化输出器前修改```Macro.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```修改默认警告日志内容。
+  当此配置为```true```时，输出器在执行```close()```时将检查当前输出器是否处于关闭状态，**若处于关闭状态则不执行启动逻辑仅输出警告日志**。通过在实例化输出器前修改```Macros.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```修改默认警告日志内容。
   :::
 
 ### 样例代码
@@ -237,7 +237,7 @@ logger.log(new Error('error日志'));
 
 ## 日期输出器
 
-日期输出器继承自[基础输出器](#基础输出器)，**在运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时与基础输出器保持一致的输出行为：将日志输出至控制台**。在其他运行环境下，将**按照日期周期归档日志**。支持同一周期内**日志文件分割**、**过期文件自动清理**等辅助功能。
+日期输出器继承自[基础输出器](#基础输出器)，**在运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时与基础输出器保持一致的输出行为：将日志输出至控制台**。在其他运行环境下，将**按照日期周期归档日志**。支持同一周期内**日志文件分割**、**过期文件自动清理**等辅助功能。
 
 ::: tip 提示
 日期输出器通常用于按照周期收集日志的场景。比如：将每天产生的日志归档至同一文件或文件组中，仅保留最近7天的日志。
@@ -274,7 +274,7 @@ logger.log(new Error('error日志'));
   
   ::: tip 说明
   - 当日期输出器产生异常警告时（比如：非法调用、状态错误等）时，将输出警告日志到控制台，不导致运行环境降级。
-  - 当日期输出器产生阻塞级异常（比如：无法创建目录、无法创建文件等）时，运行环境降级为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
+  - 当日期输出器产生阻塞级异常（比如：无法创建目录、无法创建文件等）时，运行环境降级为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
   :::
 
 ### 功能参数
@@ -284,7 +284,7 @@ logger.log(new Error('error日志'));
   设置此配置将指定输出器的**归档源目录**，默认值为```path.resolve(process.cwd(), `./logs/${process.pid}`)```。
 
   ::: danger 警告
-  若**归档源目录**不存在时，输出器将在实例化过程中**尝试创建归档源目录**，若**创建失败将导致运行环境降级为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```**。
+  若**归档源目录**不存在时，输出器将在实例化过程中**尝试创建归档源目录**，若**创建失败将导致运行环境降级为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```**。
   :::
 
   ::: warning 注意
@@ -299,7 +299,7 @@ logger.log(new Error('error日志'));
   **可通过配置附加归档前缀至归档源目录或归档文件名**，由于文件系统限制，**不能使用以下10个字符：```<\.:?*"|/>```，将被自动替换为```'_'```**。
 
   ::: danger 注意
-  若启动了```filePrefixAsSourcePath```配置，输出器将在实例化过程中**尝试创建```sourcePath/filePrefix```**，若**创建失败将导致运行环境降级为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```**。
+  若启动了```filePrefixAsSourcePath```配置，输出器将在实例化过程中**尝试创建```sourcePath/filePrefix```**，若**创建失败将导致运行环境降级为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```**。
   :::
 
   ::: tip 提示
@@ -422,7 +422,7 @@ setInterval(() => {
 
 ## 文件输出器
 
-文件输出器继承自[基础输出器](#基础输出器)，**在运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时与基础输出器保持一致的输出行为：将日志输出至控制台**。在其他运行环境下，输出器**输出的所有日志归档至同一文件中**。支持通过调整配置进行**归档日志分类**、**过期文件自动清理**等辅助功能。
+文件输出器继承自[基础输出器](#基础输出器)，**在运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时与基础输出器保持一致的输出行为：将日志输出至控制台**。在其他运行环境下，输出器**输出的所有日志归档至同一文件中**。支持通过调整配置进行**归档日志分类**、**过期文件自动清理**等辅助功能。
 
 ::: tip 提示
 文件输出器通常用于按次归档同类业务日志，将一次业务链路中产生的所有日志归档至同一文件。比如：按次归档应用处理用户请求时产生的日志，相同请求路径且每天内的日志归档至同一目录。
@@ -470,7 +470,7 @@ setInterval(() => {
   
   ::: tip 说明
   - 当文件输出器产生异常警告时（比如：非法调用、状态错误等）时，将输出警告日志到控制台，不导致运行环境降级。
-  - 当文件输出器产生阻塞级异常（比如：无法创建目录、无法创建文件等）时，运行环境降级为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
+  - 当文件输出器产生阻塞级异常（比如：无法创建目录、无法创建文件等）时，运行环境降级为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
   :::
 
 ### 功能参数
@@ -480,7 +480,7 @@ setInterval(() => {
   设置此配置将指定输出器的**归档源目录**，默认值为```path.resolve(process.cwd(), `./logs/${process.pid}`)```。
 
   ::: danger 警告
-  若**归档源目录**不存在时，输出器将在实例化过程中**尝试创建归档源目录**，若**创建失败将导致运行环境降级为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```**。
+  若**归档源目录**不存在时，输出器将在实例化过程中**尝试创建归档源目录**，若**创建失败将导致运行环境降级为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```**。
   :::
 
   ::: warning 注意
@@ -517,7 +517,7 @@ setInterval(() => {
   **归档前缀可配置附加至归档源目录或日志文件名**，由于文件系统限制，**不能使用以下10个字符：```<\.:?*"|/>```，将被自动替换为```'_'```**。
 
   ::: danger 注意
-  若启动了```filePrefixAsSourcePath```配置，输出器将在实例化过程中**尝试创建```sourcePath/filePrefix```**，若**创建失败将导致运行环境降级为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```**。
+  若启动了```filePrefixAsSourcePath```配置，输出器将在实例化过程中**尝试创建```sourcePath/filePrefix```**，若**创建失败将导致运行环境降级为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```**。
   :::
 
   ::: tip 提示

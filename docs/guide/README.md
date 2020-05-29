@@ -28,9 +28,9 @@ Corejs由两个部分组成：核心组件和辅助API。
 
 **进程管理相关**
 
-- 应用生命周期
-- 应用级全局对象
-- TraceIPC/IPC
+- [应用生命周期](/guide/cluster-manager.html#多进程模型)
+- [应用级全局对象](/guide/cluster-manager.html#全局对象维护)
+- [TraceIPC/IPC](/guide/cluster-manager.html#进程间通信)
 
 ## 与Express.js的关系
 

@@ -124,7 +124,7 @@ const logger = loggerCore.createLogger();
 LoggerCore在实例化时接收**基础配置**和**输出器配置列表**构成的对象，即：```{ id, env, level, params, loggers }```。
 
 - ```id```：LoggerCore的唯一标识，默认值为``` `LoggerCore_${generateRandomString(6, 'uln')}` ```。
-- ```env```：LoggerCore的运行环境，默认值为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
+- ```env```：LoggerCore的运行环境，默认值为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
 
   ::: danger 注意
   **此配置将作为在```loggers```中对日志输出器进行针对性配置时```env```的默认值：**
@@ -135,8 +135,8 @@ LoggerCore在实例化时接收**基础配置**和**输出器配置列表**构�
 
   运行环境将影响LoggerCore行为：
 
-  - 当运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，**LoggerCore创建输出器实例时将忽略```loggers```配置**，仅创建一个使用```init```方式触发构建的[基础输出器](/guide/logger-introduce.html#基础输出器)。
-  - 当运行环境不为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，LoggerCore将根据实际配置创建日志输出器实例。
+  - 当运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，**LoggerCore创建输出器实例时将忽略```loggers```配置**，仅创建一个使用```init```方式触发构建的[基础输出器](/guide/logger-introduce.html#基础输出器)。
+  - 当运行环境不为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，LoggerCore将根据实际配置创建日志输出器实例。
 
 - ```level```：最小日志输出等级名称或别名，输出组仅输出权重大于等于此输出等级的日志。
 
@@ -149,8 +149,8 @@ LoggerCore在实例化时接收**基础配置**和**输出器配置列表**构�
 
   最小输出等级的默认值依赖于当前运行环境：
 
-  - 当运行环境为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```all```。
-  - 当运行环境不为```Core.Macro.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```error```。
+  - 当运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```all```。
+  - 当运行环境不为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```error```。
 
 - ```params```：日志输出器的基础功能配置参数。
 

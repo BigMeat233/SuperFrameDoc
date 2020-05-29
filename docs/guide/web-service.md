@@ -228,21 +228,21 @@ ServiceCore支持通过外部注入日志输出器的方式进行日志收集，
   > 通过在实例化ServiceCore前修改宏的方式实现对日志输出等级的变更：
   > | 宏名称                                         | 描述        | 默认值         |
   > | :-------------------------------------------- |:---------- | :------------ |
-  > | ```Core.Macro.SERVICE_CORE_INFOS_LOG_LEVEL``` | 信息日志等级 | ```'infos'``` |
-  > | ```Core.Macro.SERVICE_CORE_WARNS_LOG_LEVEL``` | 警告日志等级 | ```'warns'``` |
-  > | ```Core.Macro.SERVICE_CORE_ERROR_LOG_LEVEL``` | 错误日志等级 | ```'error'``` |
+  > | ```Core.Macros.SERVICE_CORE_INFOS_LOG_LEVEL``` | 信息日志等级 | ```'infos'``` |
+  > | ```Core.Macros.SERVICE_CORE_WARNS_LOG_LEVEL``` | 警告日志等级 | ```'warns'``` |
+  > | ```Core.Macros.SERVICE_CORE_ERROR_LOG_LEVEL``` | 错误日志等级 | ```'error'``` |
 - ```message```：文案内容
   > 通过在实例化ServiceCore前修改宏的方式实现对日志输出内容的变更：
   > | 宏名称                                                        | 描述                                   | 输出等级                                       |
   > | :----------------------------------------------------------- | :-----------------------------------  | :-------------------------------------------  |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```        | 当前状态下不允许执行操作                  | ```Core.Macro.SERVICE_CORE_WARNS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_HANDLER```      | 待绑定的Handler类型无效                  | ```Core.Macro.SERVICE_CORE_WARNS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_ROUTE_PATH```   | 待绑定的Handler请求路径无效              | ```Core.Macro.SERVICE_CORE_WARNS_LOG_LEVEL``` |
+  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```        | 当前状态下不允许执行操作                  | ```Core.Macros.SERVICE_CORE_WARNS_LOG_LEVEL``` |
+  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_HANDLER```      | 待绑定的Handler类型无效                  | ```Core.Macros.SERVICE_CORE_WARNS_LOG_LEVEL``` |
+  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_ROUTE_PATH```   | 待绑定的Handler请求路径无效              | ```Core.Macros.SERVICE_CORE_WARNS_LOG_LEVEL``` |
   > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_SSL_OPTIONS```  | SSL配置无效                            | 抛出异常                                       |
   > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_PARAM_TYPE```   | 设置全局拦截器/错误拦截器/构建过程时参数无效 | 抛出异常                                       |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_SUCCESS_BIND_HANDLER``` | 成功绑定Handler                        | ```Core.Macro.SERVICE_CORE_INFOS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_SUCCESS_START_SERVER``` | ServiceCore启动成功                    | ```Core.Macro.SERVICE_CORE_INFOS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_FAILURE_START_SERVER``` | ServiceCore启动失败                    | ```Core.Macro.SERVICE_CORE_ERROR_LOG_LEVEL``` |
+  > | ```Core.Message.SERVICE_CORE_MESSAGE_SUCCESS_BIND_HANDLER``` | 成功绑定Handler                        | ```Core.Macros.SERVICE_CORE_INFOS_LOG_LEVEL``` |
+  > | ```Core.Message.SERVICE_CORE_MESSAGE_SUCCESS_START_SERVER``` | ServiceCore启动成功                    | ```Core.Macros.SERVICE_CORE_INFOS_LOG_LEVEL``` |
+  > | ```Core.Message.SERVICE_CORE_MESSAGE_FAILURE_START_SERVER``` | ServiceCore启动失败                    | ```Core.Macros.SERVICE_CORE_ERROR_LOG_LEVEL``` |
 - ```funcName```：调用方法名
   > 通过在实例化ServiceCore前修改宏的方式实现对调用方法名的变更：
   > | 宏名称                                        | 默认值           |
