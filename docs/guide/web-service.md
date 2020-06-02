@@ -2,78 +2,141 @@
 
 ## 启动Web服务
 
-通过创建Corejs的Web服务组件ServiceCore的实例启动Web服务，通过调整ServiceCore实例化配置控制Web服务运行参数。
+使用Corejs内置的**ServiceCore**创建和维护Web服务。
 
-::: tip 提示
-ServiceCore默认运行在3000端口。
-:::
-
-样例中使用默认配置启动ServiceCore：
+首先，我们需要创建**ServiceCore**的实例。
 
 ```javascript
 const Core = require('node-corejs');
-// 创建ServiceCore
 const serviceCore = new Core.ServiceCore();
-// 启动ServiceCore
+```
+
+使用```new Core.ServiceCore()```创建**ServiceCore**实例时可以传入Web服务的配置对象```configs```：
+
+- ```configs.id```：**ServiceCore**的ID，用于标识**ServiceCore**。非必填项，默认值：```ServiceCore_${generateRandomString(6, 'uln')}```;
+- ```configs.port```：Web服务驻留的端口。非必填项，默认值：```3000```。
+- ```configs.ssl```：Web服务的TLS/SSL配置。当```configs.port```为```443```时必填，默认值：```{}```。
+- ```configs.ssl.cert```：TLS/SSL证书（链）。可以使用```String```指定证书文件路径；也可以使用```Buffer```指定证书内容。
+- ```configs.ssl.key```：TLS/SSL证书密钥。可以使用```String```指定证书密钥路径；也可以使用```Buffer```指定证书密钥内容。
+- ```configs.baseRoutePath```：Web服务的基础请求路径，用于指定统一的请求路径前缀。非必填项，默认值：```'/'```。
+  > 比如，当此配置为```'/api'```，ServiceCore挂载了请求路径为```'/Test.do'```的Handler时，客户端需要请求```'/api/Test.do'```。
+
+  ::: warning 注意
+
+  - 当此配置不以```'/'```开头时，将被自动附加```'/'```作为前缀。比如：当业务层配置此项为```'api'```，将自动被调整为```'/api'```。
+  - 当此配置以```'/'```结尾时，将自动删除位于结尾的所有```'/'```。比如：当业务层配置此项为```'/api//'```，将自动被调整为```'/api'```。
+
+  :::
+
+- ```configs.middlewares```：全局中间件列表。非必填项，默认值：```[]```。
+- ```configs.logger```：日志输出器，指定内部日志输出使用的输出器。非必填项，默认为空日志输出器。
+
+然后，我们使用```start()```方法启动Web服务，**ServiceCore**实例将按照配置中指定的参数运行。
+
+```javascript
+serviceCore.start();
+```
+
+```start()```接收一个回调函数，用于捕获Web服务启动状态；可以在这个回调函数中对Web服务启动成功或失败进行相应的处理。
+
+```javascript
 serviceCore.start((err) => {
-  if (err) {
+  // 如果err为null则表示Web服务启动成功
+  if(err) {
+    // Web服务启动失败
     console.log(`服务启动失败: ${err}`);
     return;
   }
+  // Web服务启动成功
   console.log('服务启动成功');
 });
 ```
 
+需要注意的是，```start()```执行成功后将**ServiceCore**变更为启动状态，仅允许在关闭状态执行的操作将被拒绝执行：
+
+- [设置全局拦截器](#全局拦截器)
+- [设置错误拦截器](#错误拦截器)
+- [自定义构建过程](#自定义构建过程)
+
 ## 启用TLS/SSL
 
-在创建ServiceCore实例时，如果指定驻留端口为443，则必须在```ssl```配置中设置TLS/SSL密钥和证书，否则将无法成功启动ServiceCore：
+在创建**ServiceCore**实例时，如果指定的服务驻留端口为```443```，则**必须设置TLS/SSL证书（链）和证书密钥**。
+
+我们可以通过```configs.ssl```配置项指定TLS/SSL证书（链）和证书密钥，否则执行```start()```时将从回调函数中得到一个```err```。
 
 ```javascript
 const Core = require('node-corejs');
-// 其中ssl.key为TLS/SSL密钥
-// 其中cert.pem为TLS/SSL证书(链)
+const SSL_KEY_PATH = './ssl.key';
+const SSL_CERT_PATH = './cert.pem';
+
 const serviceCore = new Core.ServiceCore({
   port: 443,
+  // 指定TLS/SSL证书（链）和证书密钥的文件路径
   ssl: {
-    key: './ssl.key',
-    cert: './cert.pem',
+    key: SSL_KEY_PATH,
+    cert: SSL_CERT_PATH
   }
 });
-serviceCore.start((err) => {
-  if (err) {
-    console.log(`服务启动失败: ${err}`);
-    return;
-  }
-  console.log('服务启动成功');
+```
+
+**ServiceCore**使用```https.createServer()```实现Web服务的TLS/SSL。因此，我们也可以使用将TLS/SSL证书（链）和证书密钥装入```Buffer```中的形式创建**ServiceCore**。
+
+```javascript
+const fs = require('fs');
+const Core = require('node-corejs');
+const key = fs.readFileSync('./ssl.key');
+const cert = fs.readFileSync('./cert.pem');
+
+const serviceCore = new Core.ServiceCore({
+  port: 443,
+  // 指定TLS/SSL证书（链）和证书密钥的文件内容
+  ssl: { key, cert }
 });
 ```
 
 ## 自定义构建过程
 
-ServiceCore**启动时**默认使用node原生的```http.createServer()```或```https.createServer()```创建最终承载Web服务的Server实例。如果有特殊场景需要变更Server实例的构建过程，在**执行启动前**更改ServiceCore实例的```createServer```属性即可。
+**ServiceCore**执行```start()```时默认使用node原生API```http.createServer()```或```https.createServer()```构建承载Web服务的Server实例。
+
+**ServiceCore**最终调用```createServer()```构建Server实例。因此，我们可以向**ServiceCore实例**的```createServer```属性指定新的构建方法，在方法中实现自定义的构建过程即可完成对**ServiceCore**默认构建行为的更改。
+
+需要注意的是，**任何在ServiceCore实例启动状态下对```createServer```属性的变更操作将被拒绝。**
 
 ::: danger 注意
-自定义Server构建过程时，```createServer```方法中需要包含Server实例构建和启动逻辑。
+```createServer```执行过程中需要包含**构建Server**和**启动Server**。
 :::
 
-样例代码中以默认Server构建行为演示如何变更构建过程：
+```createServer```属性仅接收```Function```，其参数列表为：
+
+- ```app```：**ServiceCore**依赖的Express实例。
+- ```configs```：**ServiceCore**使用的配置。
+  > 在创建**ServiceCore**时，将对构造参数传入的配置进行兜底和校正处理。因此，此值可能与创建**ServiceCore**传入的构造参数有差异。
+- ```callBack```：回调函数，参数列表为```(err, detail)```。
+  > 在构建结束时需要调用```callBack()```向**ServiceCore**返回构建结果。当回传的```err```为非```null```的值时表示构建成功，**ServiceCore**变更为启动状态并向业务层回抛构建结果。
+
+  ::: tip 说明
+  ```start()```通过回调函数向业务层回传的结果将来自于执行```callBack()```时传入的```err```和```detail```。
+  :::
+
+样例代码中以默认构建行为演示如何自定义构建过程。在变更默认构建行为后如果期望复原可以使用以下代码：
 
 ```javascript
 const Core = require('node-corejs');
 const serviceCore = new Core.ServiceCore();
-// 必须在执行start()之前变更Server构建过程
-// 参数列表: Express实例、ServiceCore配置、cps风格执行回调
+
+// 直接修改createServer属性
 serviceCore.createServer = (app, configs, callBack) => {
-  // 根据驻留端口创建Server实例 - port为443时校验ssl配置后使用https创建实例,否则直接使用http创建实例
+  // 根据驻留端口创建Server实例
   const { port, ssl } = configs;
   let server = null;
+  // port为443时 - 校验ssl配置后使用https创建实例
   if (port === 443) {
     if (!ssl.cert || !ssl.key) {
-      // 抛出无效的SSL配置项错误,此宏位于Core.Macro中
-      throw new Error(SERVICE_CORE_MESSAGE_INVALID_SSL_OPTIONS);
+      throw new Error(Core.Macros.SERVICE_CORE_MESSAGE_INVALID_SSL_OPTIONS);
     }
     server = https.createServer(ssl, app);
-  }
+  } 
+  // port不为443时 - 使用http创建实例
   else {
     server = http.createServer(app);
   }
@@ -81,7 +144,6 @@ serviceCore.createServer = (app, configs, callBack) => {
   server.on('error', callBack);
   server.listen(port, () => { callBack(null, { app, server }) });
 }
-serviceCore.start();
 ```
 
 ## 请求处理模型
@@ -90,54 +152,94 @@ serviceCore.start();
 
 ## 全局拦截器
 
-**ServiceCore拦截器为全局拦截器，在ServiceCore启动时，封装拦截器为Express标准中间件挂载至Express中间件列表的最前端以实现拦截全部用户请求功能**，因此接收到用户请求时，可以在全局拦截器中决定是否放行此次请求进入下游处理。
+**ServiceCore实现全局拦截器的原理是构造包含拦截器逻辑的Express标准中间件，将其挂载至Express中间件列表首位拦截客户端流量**。在**ServiceCore实例**执行```start()```时，将使用```app.use()```挂载全局拦截器。
 
-全局拦截器是Express标准中间件，使用```next()```分发处理流程至下游。若在全局拦截器执行过程中产生了未捕获的异常，将进入[错误拦截器](#错误拦截器)处理。
+因此，我们可以在执行```start()```前向**ServiceCore实例**的```globalIntercaptor```属性指定新的全局拦截器：
 
 ```javascript
+// 在执行start()前指定globalIntercaptor
 serviceCore.globalIntercaptor = (req, res, next) => { 
   // 执行全局拦截器逻辑
   // ...
+  // 拦截器逻辑结束后执行next()分发处理流程至下游链路
   next();
-}
+};
 ```
 
-::: danger 注意
-在全局拦截器的默认行为下，如果用户请求路径未匹配到任何一个Handler，则认为请求无效，直接返回404状态码，不再进入后续全局中间件和Handler阶段处理。
+::: tip 说明
+**全局拦截器**是挂载至Express中间件列表首位的**标准中间件**，错误处理与运行方式与**Express标准中间件**保持一致，详情可以查阅[Express官方文档](http://expressjs.com/en/guide/using-middleware.html);
 
-所以，如果在全局中间件中使用了静态资源中间件（如：```express.static```），**在默认拦截器行为下可能导致所有静态资源请求无效**。此时需要**变更全局拦截器拦截逻辑**，放行相关资源请求或**将静态资源中间件置于Handler维度**。
+需要特别注意的是，**ServiceCore**引入了[错误拦截器](#错误拦截器)对**Exress标准中间件**运行过程中产生的异常进行处理。因此，我们可以在[错误拦截器](#错误拦截器)处理**全局拦截器**中未被捕获或使用```next(err)```抛出的异常。
 :::
 
-**在ServiceCore启动前**，可以对实例```globalInterceptor```属性进行更改以变更全局拦截器处理行为：
+**全局拦截器**仅接收```Function```，其参数列表为：
+
+- ```req```：用户请求实例。
+- ```res```：用户返回实例。
+- ```next```：流程控制函数。
+  > - 执行```next()```分发处理流程至下游链路。
+  > - 执行```next(err)```触发[全局错误处理](#错误拦截器)。
+
+当**ServiceCore**收到客户端请求时，首先进入**全局拦截器**处理。在**全局拦截器**默认行为下，如果客户端请求路径未能匹配到Handler，则认为请求无效直接返回404状态码，不再进入后续的[全局中间件](#全局中间件)和[Handler阶段](/guide/request-handler.html)。
+
+因此，如果在[全局中间件](#全局中间件)中使用了泛路径中间件（如：```express.static```），在默认拦截器行为下可能导致请求无效。此类场景下，我们可以尝试：
+
+- 将泛路径中间件变更至Handler维度。
+- 变更全局拦截器默认行为，放行相关请求。
+
+样例代码中以默认全局拦截器行为演示如何变更全局拦截器。在变更全局拦截器默认行为后如果期望复原可以使用以下代码：
 
 ```javascript
-const Core = require('node-corejs');
-const serviceCore = new ServiceCore();
-// 必须在执行start()之前变更全局拦截器逻辑
+// 在执行start()前指定globalIntercaptor
 serviceCore.globalIntercaptor = (req, res, next) => {
   const requestPath = req.path;
-  // 将过滤请求路径不以serviceCore配置baseRoutePath开头且未匹配到任何Handler的用户请求
-  const isHandlerBinded = !!Object
-    .keys(serviceCore._handlerMap)
-    .find((handlerRoutePath) => requestPath.indexOf(serviceCore.baseRoutePath) === 0 && requestPath.indexOf(handlerRoutePath) !== -1);
-  isHandlerBinded ? next() : res.status(404).end();
+  const routePathes = Object.keys(serviceCore._handlerMap);
+  let isHandlerBinded = false;
+  // 使用for循环降低性能开销
+  for (let i = 0; i < routePathes.length; i++) {
+    const handlerRoutePath = routePathes[i];
+    if (requestPath.indexOf(serviceCore.baseRoutePath) === 0 && requestPath.indexOf(handlerRoutePath) !== -1) {
+      (isHandlerBinded = true) && next();
+      break;
+    }
+  }
+
+  !isHandlerBinded && res.status(404).end();
 }
-serviceCore.start();
 ```
 
 ## 全局中间件
 
-**在ServiceCore维度设置的中间件为全局中间件，支持所有Express生态中间件**，比如body-parser、multer等。
+**ServiceCore**支持在两个维度设置中间件：
 
-::: danger 注意
-如果在全局中间件中使用了静态资源中间件，则需要修改[全局拦截器](#全局拦截器)的默认处理逻辑，针对静态资源请求予以放行。
+- 全部有效请求。
+- 特定路径的请求。
+
+**针对所有有效请求的中间件称为全局中间件**。由**ServiceCore**构造参数```configs.middlewares```配置项指定：
+
+```javascript
+const serviceCore = new Core.ServiceCore({
+  middlewares: [] // 指定全局中间件列表
+});
+```
+
+**针对特定路径请求使用的中间件在[自定义Handler](/guide/request-handler.html#handler中间件)时指定**。我们可以在自定义Handler时根据客户端请求的实际上下文（比如：请求参数）动态指定中间件列表；也可以在中间件执行过程中控制执行链路（比如：跳过执行）。
+
+需要注意的是，**ServiceCore将在全局中间件处理结束后分发客户端请求进入与请求路径对应的Handler处理**，即：全局中间件在Handler中间件之前执行。
+
+::: tip 提示
+**ServiceCore**在任意维度使用的中间件兼容Express生态，我们可以直接使用```body-parser```、```multer```等。
 :::
 
-**注意：Handler维度可以根据用户请求路径、参数等动态挂载中间件列表，同样支持所有Express生态中间件**。全局中间件阶段结束后ServiceCore将分发用户请求进入对应的Handler处理，即：全局中间件在Handler中间件之前执行。
+**ServiceCore**执行```start()```时，当挂载**全局拦截器**完成后，会将构造参数```configs.middlewares```内的中间件依次使用```app.use()```挂载至Express实例，以完成**全局中间件**挂载。
 
-**ServiceCore将全局中间件列表中的中间件逐个挂载至Express中间件列表（位于全局拦截器之后）**。此时，对于在全局拦截器中放行的用户请求，将进入全局中间件阶段继续处理。在全局中间件阶段，中间件列表中的中间件将逐个执行。若中间件执行过程中请求返回，则认为请求处理结束不再进入后续处理；执行过程中产生了未捕获的异常将进入[错误拦截器](#错误拦截器)中处理。
+因此，客户端请求于**全局拦截器**放行之后进入**全局中间件**处理，我们在**全局中间件**中使用泛路径中间件（如：```express.static```）时可能会被**全局拦截器**拦截。
 
-样例代码使用body-parser对有效请求进行body解析：
+::: tip 说明
+**全局中间件是直接挂在至Express实例的标准中间件**。执行```next(err)```或未被捕获的异常都将进入[错误拦截器](#错误拦截器)；若**全局中间件**执行过程中请求返回，则认为请求处理结束不再进入后续处理流程。
+:::
+
+样例代码使用```body-parser```对有效请求进行解析：
 
 ```javascript
 const Core = require('node-corejs');
@@ -152,9 +254,9 @@ const serviceCore = new Core.ServiceCore({
 serviceCore.start();
 ```
 
-**全局中间件阶段不支持动态中间件**，若有中间件逻辑控制场景，推荐使用Wrapper实现。
+需要注意的是，**全局中间件不支持动态中间件**。在一些需要中间件逻辑控制场景中，我们可以使用Middleware Wrapper实现。
 
-样例代码根据body-parser解析结果进行自定义处理，解析异常时使用200状态码返回异常信息：
+样例代码根据```body-parser```解析结果进行自定义处理，解析异常时不再向客户端抛出500状态码，而是使用200状态码向客户端返回异常信息：
 
 ```javascript
 const Core = require('node-corejs');
@@ -173,87 +275,142 @@ serviceCore.start();
 
 ## 错误拦截器
 
-**ServiceCore将全局错误拦截器封装为Express标准中间件挂载至Express中间件列表的最末端**，因此，错误拦截器与Express错误处理中间件表现相同：仅可捕获同步异常（全局拦截器执行阶段、全局中间件执行阶段），若要捕获异步产生的异常需要进行特殊处理（可参考Express文档中对错误捕获的相关描述，比如使用```next(err)```）。
+**ServiceCore**引入了**错误拦截器**对**Exress标准中间件**运行过程中产生的异常进行处理，即**全局拦截器**和**全局中间件**中使用```next(err)```或未被捕获的异常都将进入**错误拦截器**统一处理。
 
-::: warning 注意
-- Handler处理过程中未捕获的异常将在Handler[统一错误处理](/guide/request-handler.html#统一错误处理)中被捕获，与ServiceCore错误拦截器无关。
-- 设置Express错误处理中间件时，参数列表必须为```(err, req, res, next)```，而在设置错误拦截器时，ServiceCore将会自动包装错误拦截器为标准错误处理中间件挂载至Express，无需关注参数列表。
+**ServiceCore**执行```start()```时，在挂载**全局拦截器**和**全局中间件**完成后，将**错误拦截器**封装为**Express标准错误中间件**并使用```app.use()```挂载至Express实例。此时，**错误拦截器**对应的**Express标准错误中间件**位于Express中间件列表的最末位，将捕获到所有**Express标准中间件**产生的异常。
+
+::: tip 说明
+**ServiceCore**提供了两个维度的错误捕获：
+
+- **全局拦截器**和**全局中间件**中产生的异常进入**错误拦截器**。
+- **Handler**处理过程中产生的异常进入[统一错误处理](/guide/request-handler.html#统一错误处理)。
+
+**在设置错误拦截器时，ServiceCore将自动包装错误拦截器为Express标准错误中间件，无需关注参数列表。**
+
+需要注意的是，**错误拦截器**使用Express提供的**Express标准错误中间件**实现。因此，仅可捕获到**全局拦截器**和**全局中间件**执行过程中产生的**同步异常**，关于**Express标准错误中间件**的使用方式可以查阅[Express官方文档](https://expressjs.com/en/guide/error-handling.html#error-handling)。
 :::
 
-**在ServiceCore启动前**，可以对实例```errorInterceptor```属性进行更改以变更错误拦截器处理行为：
+在**ServiceCore**启动前，我们可以通过修改**ServiceCore实例**的```errorInterceptor```属性变更错误拦截器：
 
 ```javascript
-const Core = require('node-corejs');
-const serviceCore = new Core.ServiceCore();
-// 必须在执行start()之前变更错误拦截器逻辑
-serviceCore.errorInterceptor = (err, req, res, next) => { res.status(500).end() };
-serviceCore.start();
+// 在执行start()前指定errorInterceptor
+serviceCore.errorInterceptor = (err, req, res) => { 
+  res.status(500).end();
+};
 ```
 
 ## 设置请求路径
 
-ServiceCore针对特定路径的[请求处理](/guide/request-handler)需要配合Handler实现，Handler有独立的生命周期和处理流程。**全局中间件处理结束后**，用户请求进入与请求路径匹配的Handler执行后续处理。
+**ServiceCore**针对请求路径的请求处理需要配合[Handler](/guide/request-handler.html)实现，Handler有独立的[生命周期和处理流程](/guide/request-handler.html#handler处理流程)。**全局中间件**处理结束后，客户端请求将进入与请求路径匹配的**Handler**执行后续处理。
 
-**使用继承的方式实现Handler**，通过重写```static getRoutePath()```指定用户请求路径规则，ServiceCore将分发符合规则的请求进入Handler处理。处理特定请求方式的用户请求需要实现与请求方式对应的```Handler Method```，比如：需要处理用户POST方式请求，重写Handler中```postHandler(req, res, next)```即可。
+首先，我们先来学习**Handler**的基本使用方法：
 
-Handler必须绑定至ServiceCore才能使请求路径生效，**绑定操作必须在ServiceCore启动前进行**，多次绑定仅保留最后一次绑定的Handler列表。
+- 指定请求路径规则
+- 针对请求方式（```method```）分流处理
+
+因此，我们在[自定义Handler](/guide/request-handler.html)时至少需要做三件事：
+
+- 实现一个继承自```Handler```的类
+- **重写```getRoutePath()```静态方法**，指定请求路径规则
+- **重写```methodHandler()```实例方法**，对期望方式的客户端请求进行处理
+
+::: warning 注意
+指定请求路径时，需要重写**静态方法**，即```static getRoutePath()```；而实现请求处理时重写的```methodHandler()```是**实例方法**。
+
+另外，```methodHandler```不是实际重写的方法名，只是**Handler Method**的代称，比如：处理客户端POST请求，需要重写**Handler**中的```postHandler()```。
+:::
+
+让我们来尝试自定义一个Hello World Handler：
 
 ```javascript
 const Core = require('node-corejs');
 
-// 实现自定义Handler
-class TestHandler extends Core.Handler {
+class HelloWorldHandler extends Core.Handler {
+  // 指定请求路径规则
   static getRoutePath() {
-    return '/Test.do';
+    return '/HelloWorld.do';
   }
-
+  // 指定get请求处理
   getHandler(req, res, next) {
     next('Hello World');
   }
 }
-
-// 创建ServiceCore进行绑定并启动
-const serviceCore = new Core.ServiceCore();
-serviceCore.bind([TestHandler]);
-serviceCore.start();
 ```
 
-## 日志收集
+另外我们需要注意的是，**Handler**必须绑定至**ServiceCore**才能生效。
 
-ServiceCore支持通过外部注入日志输出器的方式进行日志收集，ServiceCore内部通过调用输出器的```log(level, funcName, message)```输出日志。
-
-参数说明：
-
-- ```level```：日志等级
-  > 通过在实例化ServiceCore前修改宏的方式实现对日志输出等级的变更：
-  > | 宏名称                                         | 描述        | 默认值         |
-  > | :-------------------------------------------- |:---------- | :------------ |
-  > | ```Core.Macros.SERVICE_CORE_INFOS_LOG_LEVEL``` | 信息日志等级 | ```'infos'``` |
-  > | ```Core.Macros.SERVICE_CORE_WARNS_LOG_LEVEL``` | 警告日志等级 | ```'warns'``` |
-  > | ```Core.Macros.SERVICE_CORE_ERROR_LOG_LEVEL``` | 错误日志等级 | ```'error'``` |
-- ```message```：文案内容
-  > 通过在实例化ServiceCore前修改宏的方式实现对日志输出内容的变更：
-  > | 宏名称                                                        | 描述                                   | 输出等级                                       |
-  > | :----------------------------------------------------------- | :-----------------------------------  | :-------------------------------------------  |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_STATE```        | 当前状态下不允许执行操作                  | ```Core.Macros.SERVICE_CORE_WARNS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_HANDLER```      | 待绑定的Handler类型无效                  | ```Core.Macros.SERVICE_CORE_WARNS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_ROUTE_PATH```   | 待绑定的Handler请求路径无效              | ```Core.Macros.SERVICE_CORE_WARNS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_SSL_OPTIONS```  | SSL配置无效                            | 抛出异常                                       |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_INVALID_PARAM_TYPE```   | 设置全局拦截器/错误拦截器/构建过程时参数无效 | 抛出异常                                       |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_SUCCESS_BIND_HANDLER``` | 成功绑定Handler                        | ```Core.Macros.SERVICE_CORE_INFOS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_SUCCESS_START_SERVER``` | ServiceCore启动成功                    | ```Core.Macros.SERVICE_CORE_INFOS_LOG_LEVEL``` |
-  > | ```Core.Message.SERVICE_CORE_MESSAGE_FAILURE_START_SERVER``` | ServiceCore启动失败                    | ```Core.Macros.SERVICE_CORE_ERROR_LOG_LEVEL``` |
-- ```funcName```：调用方法名
-  > 通过在实例化ServiceCore前修改宏的方式实现对调用方法名的变更：
-  > | 宏名称                                        | 默认值           |
-  > | :------------------------------------------- | :-------------  |
-  > | ```Core.Message.SERVICE_CORE_FUNCNAME_LOG``` | ```'服务核心'``` |
-
-可以使用Corejs内置输出器进行日志收集：
+所以，我们应该在执行```start()```前使用```bind()```将**Handler**挂载至**ServiceCore**。
 
 ```javascript
 const Core = require('node-corejs');
-// 指定ServiceCore使用基础输出器收集日志
-const serviceCore = new Core.ServiceCore({ logger: new Core.BaseLogger() });
+
+// 实现Hello World Handler
+class HelloWorldHandler extends Core.Handler { ... }
+
+// 创建ServiceCore进行绑定并启动
+const serviceCore = new Core.ServiceCore();
+serviceCore.bind([HelloWorldHandler]);
 serviceCore.start();
 ```
+
+此时，我们使用浏览器打开```http://localhost:3000/HelloWorld.do```就可以检查实现成果啦！
+
+## 日志收集
+
+**ServiceCore**支持通过从业务层传入日志输出器的方式进行日志收集。由**ServiceCore**构造参数```configs.logger```配置项指定。
+
+在内部实现上，**ServiceCore**调用输出器的```log(level, funcName, message)```输出日志，**ServiceCore**默认使用空输出器（即具有空```log()```的实例对象）。
+
+通常，我们使用Corejs内置的[日期输出器](/guide/logger-introduce.html#日期输出器)作为**ServiceCore**的日志输出器：
+
+::: tip 提示
+Corejs内置的**日期输出器**将同一周期内产生的日志归档至一个文件（组），支持自动清理和文件分割。
+:::
+
+```javascript
+const serviceCore = new Core.ServiceCore({
+  // 指定ServiceCore使用DateLogger进行日志收集
+  logger: new Core.DateLogger({ filePrefix: 'ServiceCore' })
+});
+```
+
+日志的输出等级、方法名和文案被存储在```Core.Macros```或```Core.Messages```中，我们可以通过提前修改这些宏变量的方式实现日志定制（比如：日志国际化）。
+
+- ```level```：日志输出等级
+
+  ::: tip 提示
+  日志输出等级存储在```Core.Macros```中。
+  :::
+
+  | 宏名称                              | 描述        | 默认值         |
+  | :--------------------------------- |:---------- | :------------ |
+  | ```SERVICE_CORE_INFOS_LOG_LEVEL``` | 信息日志等级 | ```'infos'``` |
+  | ```SERVICE_CORE_WARNS_LOG_LEVEL``` | 警告日志等级 | ```'warns'``` |
+  | ```SERVICE_CORE_ERROR_LOG_LEVEL``` | 错误日志等级 | ```'error'``` |
+
+- ```funcName```：调用方法名
+
+  ::: tip 提示
+  调用方法名存储在```Core.Messages```中。
+  :::
+
+  | 宏名称                           | 默认值           |
+  | :------------------------------ | :-------------- |
+  | ```SERVICE_CORE_FUNCNAME_LOG``` | ```'服务核心'``` |
+
+- ```message```：日志文案内容
+
+  ::: tip 提示
+  日志文案内容存储在```Core.Messages```中。
+  :::
+
+  | 宏名称                                           | 描述                                   | 输出等级                             |
+  | :---------------------------------------------- | :------------------------------------ | :---------------------------------- |
+  | ```SERVICE_CORE_MESSAGE_INVALID_STATE```        | 当前状态下不允许执行操作                  | ```SERVICE_CORE_WARNS_LOG_LEVEL```  |
+  | ```SERVICE_CORE_MESSAGE_INVALID_HANDLER```      | 待绑定的Handler类型无效                 | ```SERVICE_CORE_WARNS_LOG_LEVEL```  |
+  | ```SERVICE_CORE_MESSAGE_INVALID_ROUTE_PATH```   | 待绑定的Handler请求路径无效              | ```SERVICE_CORE_WARNS_LOG_LEVEL```  |
+  | ```SERVICE_CORE_MESSAGE_INVALID_SSL_OPTIONS```  | SSL配置无效                            | 抛出异常，不产生日志                   |
+  | ```SERVICE_CORE_MESSAGE_INVALID_PARAM_TYPE```   | 设置全局拦截器/错误拦截器/构建过程时参数无效 | 抛出异常，不产生日志                   |
+  | ```SERVICE_CORE_MESSAGE_SUCCESS_BIND_HANDLER``` | 成功绑定Handler                        | ```SERVICE_CORE_INFOS_LOG_LEVEL```  |
+  | ```SERVICE_CORE_MESSAGE_SUCCESS_START_SERVER``` | ServiceCore启动成功                    | ```SERVICE_CORE_INFOS_LOG_LEVEL```  |
+  | ```SERVICE_CORE_MESSAGE_FAILURE_START_SERVER``` | ServiceCore启动失败                    | ```SERVICE_CORE_ERROR_LOG_LEVEL```  |
