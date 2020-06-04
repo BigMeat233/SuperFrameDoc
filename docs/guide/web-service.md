@@ -23,13 +23,15 @@ const serviceCore = new Core.ServiceCore();
 
   ::: warning 注意
 
-  - 当此配置不以```'/'```开头时，将被自动附加```'/'```作为前缀。比如：当业务层配置此项为```'api'```，将自动被调整为```'/api'```。
+  - 当此配置不以```'/'```开头时，将自动附加```'/'```作为前缀。比如：当业务层配置此项为```'api'```，将自动被调整为```'/api'```。
   - 当此配置以```'/'```结尾时，将自动删除位于结尾的所有```'/'```。比如：当业务层配置此项为```'/api//'```，将自动被调整为```'/api'```。
 
   :::
 
 - ```configs.middlewares```：全局中间件列表。非必填项，默认值：```[]```。
 - ```configs.logger```：日志输出器，指定内部日志输出使用的输出器。非必填项，默认为空日志输出器。
+
+---
 
 然后，我们使用```start()```方法启动Web服务，**ServiceCore**实例将按照配置中指定的参数运行。
 
@@ -174,11 +176,13 @@ serviceCore.globalIntercaptor = (req, res, next) => {
 
 **全局拦截器**仅接收```Function```，其参数列表为：
 
-- ```req```：用户请求实例。
-- ```res```：用户返回实例。
+- ```req```：客户端请求实例。
+- ```res```：客户端返回实例。
 - ```next```：流程控制函数。
   > - 执行```next()```分发处理流程至下游链路。
   > - 执行```next(err)```触发[全局错误处理](#错误拦截器)。
+
+---
 
 当**ServiceCore**收到客户端请求时，首先进入**全局拦截器**处理。在**全局拦截器**默认行为下，如果客户端请求路径未能匹配到Handler，则认为请求无效直接返回404状态码，不再进入后续的[全局中间件](#全局中间件)和[Handler阶段](/guide/request-handler.html)。
 
@@ -223,13 +227,15 @@ const serviceCore = new Core.ServiceCore({
 });
 ```
 
-**针对特定路径请求使用的中间件在[自定义Handler](/guide/request-handler.html#handler中间件)时指定**。我们可以在自定义Handler时根据客户端请求的实际上下文（比如：请求参数）动态指定中间件列表；也可以在中间件执行过程中控制执行链路（比如：跳过执行）。
+**针对特定路径请求使用的中间件在[自定义Handler](/guide/request-handler.html#handler中间件)时指定**。我们可以在**自定义Handler**时根据客户端请求的实际上下文（比如：请求参数）动态指定中间件列表；也可以在中间件执行过程中控制执行链路（比如：跳过执行）。
 
 需要注意的是，**ServiceCore将在全局中间件处理结束后分发客户端请求进入与请求路径对应的Handler处理**，即：全局中间件在Handler中间件之前执行。
 
 ::: tip 提示
 **ServiceCore**在任意维度使用的中间件兼容Express生态，我们可以直接使用```body-parser```、```multer```等。
 :::
+
+---
 
 **ServiceCore**执行```start()```时，当挂载**全局拦截器**完成后，会将构造参数```configs.middlewares```内的中间件依次使用```app.use()```挂载至Express实例，以完成**全局中间件**挂载。
 
@@ -303,16 +309,16 @@ serviceCore.errorInterceptor = (err, req, res) => {
 
 **ServiceCore**针对请求路径的请求处理需要配合[Handler](/guide/request-handler.html)实现，Handler有独立的[生命周期和处理流程](/guide/request-handler.html#handler处理流程)。**全局中间件**处理结束后，客户端请求将进入与请求路径匹配的**Handler**执行后续处理。
 
-首先，我们先来学习**Handler**的基本使用方法：
+首先，我们先来讨论**Handler**的基本使用方法：
 
-- 指定请求路径规则
-- 针对请求方式（```method```）分流处理
+- 指定请求路径规则。
+- 按请求方式（比如：GET、POST）分流处理。
 
 因此，我们在[自定义Handler](/guide/request-handler.html)时至少需要做三件事：
 
-- 实现一个继承自```Handler```的类
-- **重写```getRoutePath()```静态方法**，指定请求路径规则
-- **重写```methodHandler()```实例方法**，对期望方式的客户端请求进行处理
+- 实现一个继承自```Core.Handler```的类。
+- **重写```getRoutePath()```静态方法**，指定请求路径规则。
+- **重写```methodHandler()```实例方法**，拦截期望方式的请求进行处理。
 
 ::: warning 注意
 指定请求路径时，需要重写**静态方法**，即```static getRoutePath()```；而实现请求处理时重写的```methodHandler()```是**实例方法**。
@@ -320,7 +326,9 @@ serviceCore.errorInterceptor = (err, req, res) => {
 另外，```methodHandler```不是实际重写的方法名，只是**Handler Method**的代称，比如：处理客户端POST请求，需要重写**Handler**中的```postHandler()```。
 :::
 
-让我们来尝试自定义一个Hello World Handler：
+---
+
+让我们来自定义一个Hello World Handler：
 
 ```javascript
 const Core = require('node-corejs');
@@ -339,7 +347,7 @@ class HelloWorldHandler extends Core.Handler {
 
 另外我们需要注意的是，**Handler**必须绑定至**ServiceCore**才能生效。
 
-所以，我们应该在执行```start()```前使用```bind()```将**Handler**挂载至**ServiceCore**。
+所以，我们应该在执行```start()```前使用```bind()```将**Handler**与**ServiceCore**绑定：
 
 ```javascript
 const Core = require('node-corejs');
@@ -347,9 +355,11 @@ const Core = require('node-corejs');
 // 实现Hello World Handler
 class HelloWorldHandler extends Core.Handler { ... }
 
-// 创建ServiceCore进行绑定并启动
+// 创建ServiceCore
 const serviceCore = new Core.ServiceCore();
+// 绑定ServiceCore和Handler
 serviceCore.bind([HelloWorldHandler]);
+// 启动ServiceCore
 serviceCore.start();
 ```
 
@@ -357,9 +367,7 @@ serviceCore.start();
 
 ## 日志收集
 
-**ServiceCore**支持通过从业务层传入日志输出器的方式进行日志收集。由**ServiceCore**构造参数```configs.logger```配置项指定。
-
-在内部实现上，**ServiceCore**调用输出器的```log(level, funcName, message)```输出日志，**ServiceCore**默认使用空输出器（即具有空```log()```的实例对象）。
+**ServiceCore**支持由构造参数```configs.logger```配置项指定日志输出器的方式进行日志收集，默认使用空日志输出器（即：具有空```log()```方法的实例对象）。在内部实现上，**ServiceCore**调用输出器实例的```log(level, funcName, message)```输出日志。
 
 通常，我们使用Corejs内置的[日期输出器](/guide/logger-introduce.html#日期输出器)作为**ServiceCore**的日志输出器：
 
@@ -374,7 +382,9 @@ const serviceCore = new Core.ServiceCore({
 });
 ```
 
-日志的输出等级、方法名和文案被存储在```Core.Macros```或```Core.Messages```中，我们可以通过提前修改这些宏变量的方式实现日志定制（比如：日志国际化）。
+---
+
+日志的输出等级、方法名和文案被存储在```Core.Macros```和```Core.Messages```中，我们可以通过提前修改这些宏变量的方式实现日志内容定制（比如：日志国际化）。
 
 - ```level```：日志输出等级
 
