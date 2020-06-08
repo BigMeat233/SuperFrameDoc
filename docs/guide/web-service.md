@@ -58,9 +58,9 @@ serviceCore.start((err) => {
 
 - [设置全局拦截器](#全局拦截器)
 - [设置错误拦截器](#错误拦截器)
-- [自定义构建过程](#自定义构建过程)
+- [自定义构建过程](#构建过程)
 
-## 启用TLS/SSL
+## TLS/SSL
 
 在创建**ServiceCore**实例时，如果指定的服务驻留端口为```443```，则**必须设置TLS/SSL证书（链）和证书密钥**。
 
@@ -96,7 +96,7 @@ const serviceCore = new Core.ServiceCore({
 });
 ```
 
-## 自定义构建过程
+## 构建过程
 
 **ServiceCore**执行```start()```时默认使用node原生API```http.createServer()```或```https.createServer()```构建承载Web服务的Server实例。
 
@@ -120,7 +120,7 @@ const serviceCore = new Core.ServiceCore({
   ```start()```通过回调函数向业务层回传的结果将来自于执行```callBack()```时传入的```err```和```detail```。
   :::
 
-样例代码中以默认构建行为演示如何自定义构建过程。在变更默认构建行为后如果期望复原可以使用以下代码：
+样例代码中以默认构建行为演示如何**自定义构建过程**。在变更默认构建行为后如果期望复原可以使用以下代码：
 
 ```javascript
 const Core = require('node-corejs');
@@ -148,7 +148,7 @@ serviceCore.createServer = (app, configs, callBack) => {
 }
 ```
 
-## 请求处理模型
+## 处理模型
 
 ![请求处理模型](/images/请求处理流程.jpg)
 
@@ -227,7 +227,7 @@ const serviceCore = new Core.ServiceCore({
 });
 ```
 
-**针对特定路径请求使用的中间件在[自定义Handler](/guide/request-handler.html#handler中间件)时指定**。我们可以在**自定义Handler**时根据客户端请求的实际上下文（比如：请求参数）动态指定中间件列表；也可以在中间件执行过程中控制执行链路（比如：跳过执行）。
+**针对特定路径请求使用的中间件在[自定义Handler](/guide/request-handler.html#中间件系统-2)时指定**。我们可以在**自定义Handler**时根据客户端请求的实际上下文（比如：请求参数）动态指定中间件列表；也可以在中间件执行过程中控制执行链路（比如：跳过执行）。
 
 需要注意的是，**ServiceCore将在全局中间件处理结束后分发客户端请求进入与请求路径对应的Handler处理**，即：全局中间件在Handler中间件之前执行。
 
@@ -307,7 +307,7 @@ serviceCore.errorInterceptor = (err, req, res) => {
 
 ## 设置请求路径
 
-**ServiceCore**针对请求路径的请求处理需要配合[Handler](/guide/request-handler.html)实现，Handler有独立的[生命周期和处理流程](/guide/request-handler.html#handler处理流程)。**全局中间件**处理结束后，客户端请求将进入与请求路径匹配的**Handler**执行后续处理。
+**ServiceCore**针对请求路径的请求处理需要配合[Handler](/guide/request-handler.html)实现，Handler有独立的[生命周期和处理流程](/guide/request-handler.html#处理流程)。**全局中间件**处理结束后，客户端请求将进入与请求路径匹配的**Handler**执行后续处理。
 
 首先，我们先来讨论**Handler**的基本使用方法：
 

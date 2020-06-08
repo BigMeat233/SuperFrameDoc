@@ -10,9 +10,9 @@ Corejs由两个部分组成：**核心组件**和**辅助API**。
 
 **Web服务相关**
 
-- [TLS/SSL](/guide/web-service.html#启用tls-ssl)
+- [TLS/SSL](/guide/web-service.html#tls-ssl)
 - [全局中间件](/guide/web-service.html#全局中间件)
-- [局部中间件](/guide/request-handler.html#handler中间件)
+- [局部中间件](/guide/request-handler.html#中间件系统-2)
 - [动态中间件](/guide/dynamic-middleware)
 - [全局拦截器](/guide/web-service.html#全局拦截器)
 - [错误拦截器](/guide/web-service.html#错误拦截器)

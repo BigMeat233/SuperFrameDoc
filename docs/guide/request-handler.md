@@ -4,9 +4,9 @@
 
 **Handler用于根据请求路径对客户端请求进行针对性处理。**
 
-在客户端请求经过全局拦截器、全局中间件阶段的处理后，**ServiceCore**将创建与请求路径对应的**Handler实例**，并分发处理流程进入Handler阶段。因此，**ServiceCore**是**Handler**运行的容器，负责流程控制和请求前置处理；在Handler阶段根据请求路径进行针对性处理。
+在客户端请求经过全局拦截器、全局中间件阶段的处理后，**ServiceCore**将创建与请求路径对应的**Handler实例**，并分发处理流程进入**Handler阶段**。因此，**ServiceCore**是**Handler**运行的容器，负责流程控制和请求前置处理；在**Handler阶段**根据请求路径进行针对性处理。
 
-**Handler**拥有独立的[中间件系统](#handler中间件)和[处理流程](#handler处理流程)。我们可以通过**自定义Handler**的方式定制请求处理细节，在本章中我们将讨论常用场景下如何**自定义Handler**。
+**Handler**拥有独立的[中间件系统](#中间件系统-2)和[处理流程](#处理流程)。我们可以通过**自定义Handler**的方式定制请求处理细节，在本章中我们将讨论常用场景下如何**自定义Handler**。
 
 在[Web服务](/guide/web-service.html#设置请求路径)一章中，我们已经知道**自定义Handler**至少需要：
 
@@ -46,28 +46,6 @@
 
   - **注意事项**：重写时必须执行```super```操作。
 
-  ::: tip 提示
-  **ServiceCore调用```await initHandler()```触发Handler初始化**。因此，我们在处理**ServiceCore**等待初始化过程中异步行为完成再分发处理流程的场景时，可以通过使用```Promise```：
-
-  ```javascript
-  const Core = require('node-corejs');
-
-  class Handler extends Core.Handler {
-    initHandler(serviceCore, req, res) {
-      // 执行super操作
-      super.initHandler(serviceCore, req, res);
-      // 异步行为使用Promise
-      return new Promise((resolve) => {
-        // ...
-        // 需要分发处理流程时执行resolve()
-        resolve();
-      });
-    }
-  }
-  ```
-  
-  :::
-
 - ```destroyHandler(req, res)```
 
   - **使用场景**：指定**Handler**的析构逻辑。
@@ -88,37 +66,17 @@
 
 - ```getMiddlewares(req, res)```
 
-  - **使用场景**：根据客户端请求情况动态指定[Handler中间件](#handler中间件)。
+  - **使用场景**：根据客户端请求情况动态指定[Handler中间件](#中间件系统-2)。
 
   - **调用时机**：在[Handler初始化](#handler初始化)完成后将进入**Handler中间件阶段**，此时调用此方法获取中间件列表。
 
   - **注意事项**：重写时无需执行```super```操作。
-
-  ::: tip 提示
-  **Handler进入中间件阶段后，将调用```await getMiddlewares()```获取中间件列表**。因此，我们可以使用```Promise```异步返回处理客户端请求需要的中间件。
-
-  ```javascript
-  const Core = require('node-corejs');
-
-  class Handler extends Core.Handler {
-    getMiddlewares(req, res) {
-      // 使用Promise异步返回中间件列表
-      return new Promise((resolve) => {
-        /// ...
-        // 通过resolve()返回中间件列表
-        resolve([...]);
-      });
-    }
-  }
-  ```
   
-  :::
-
 - ```onWillExecMiddleware(middleware, req, res, next)```
 
   - **使用场景**：[Handler动态中间件](/guide/dynamic-middleware.html)的核心API，提供了在执行中间件前确认/跳过中间件执行的能力。
 
-  - **调用时机**：**Handler中间件阶段**每次尝试分发中间件时，都将调用此方法确认执行当前将要分发的中间件。在此方法中使用流程控制函数```next```选择执行或跳过当前将要分发的中间件。
+  - **调用时机**：**Handler中间件阶段**每次尝试分发中间件时，都将调用此方法发起对当前将要分发的中间件执行确认。在此方法中使用流程控制函数```next```选择执行或跳过当前将要分发的中间件。
 
   - **注意事项**：重写时无需执行```super```操作。未重写此方法时，每个中间件都将被确认执行。
 
@@ -131,7 +89,7 @@
   - **注意事项**：重写时无需执行```super```操作。未重写此方法时，将确认当前中间件执行完成直接分发下一个中间件。
 
 ::: tip 说明
-**Handler动态中间件**是一个非常灵活并且有意思的系统，我们将在[动态中间件](/guide/dynamic-middleware.html)一章中进行详细讨论。在本章中，仅介绍Handler中间件的基础使用。
+**Handler动态中间件**是一个非常灵活并且有意思的系统，我们将在[动态中间件](/guide/dynamic-middleware.html)一章中进行详细讨论。在本章中，仅介绍[中间件系统](#中间件系统-2)的基础使用。
 :::
 
 ---
@@ -142,7 +100,7 @@
 
   - **使用场景**：根据**Handler中间件阶段**的处理结果进行[请求预处理](#请求预处理)，比如：客户端请求参数聚合、校验等。
 
-  - **调用时机**：**Handler中间件阶段**将于最后一个中间件被确认执行完成后结束，此后进入**Handler请求处理阶段**。在**Handler请求处理阶段**中，首先调用此方法进行[请求预处理](#请求预处理)，根据预处理情况使用流程控制函数```next```选择直接向客户端返回处理结果或进行[请求后处理](#请求后处理)。
+  - **调用时机**：**Handler中间件阶段**将于最后一个中间件执行完成被确认后结束，此后进入**Handler请求处理阶段**。在**Handler请求处理阶段**中，首先调用此方法进行[请求预处理](#请求预处理)，根据预处理情况使用流程控制函数```next```选择直接向客户端返回处理结果或进行[请求后处理](#请求后处理)。
 
   - **注意事项**：重写时无需执行```super```操作。未重写此方法时，将直接分发客户端请求进入[请求后处理](#请求后处理)。
 
@@ -173,9 +131,26 @@
 ### 统一处理
 
 - ```onFinish(data, req, res)```
+
+  - **使用场景**：对客户端请求处理完成后的业务逻辑进行[统一处理](#统一完成处理)，比如：向客户端返回处理结果。
+
+  - **调用时机**：在**Handler**任意处理阶段使用流程控制函数执行```next(data)```时将认为请求处理完成，调用此方法进行完成处理。
+
+  - **注意事项**：重写时无需执行```super```操作，默认直接调用```res.status(200).send(data)```向客户端返回200状态码和流程控制函数```next```带入的数据。
+
 - ```onError(error, req, res)```
 
-## Handler处理流程
+  - **使用场景**：对客户端请求处理过程中产生的异常进行[统一处理](#统一错误处理)。
+
+  - **调用时机**：**Handler**任意处理阶段中产生了未被捕获的异常或使用流程控制函数执行```next(err)```时，将调用此方法进行错误处理。
+
+  - **注意事项**：重写时无需执行```super```操作，默认直接调用```res.status(500).end()```向客户端返回500状态码。
+
+::: tip 提示
+出于降低逻辑复杂度考虑，我们在**自定义Handler**时尽量仅在[统一完成处理](#统一完成处理)和[统一错误处理](#统一错误处理)时**操作客户端返回实例```res```向客户端应答处理结果**。在客户端请求处理过程中，使用```next(data)```或```next(err)```使处理流程闭环。
+:::
+
+## 处理流程
 
 ![Handler处理流程](/images/Handler处理流程.jpg)
 
@@ -189,7 +164,7 @@
 
 ---
 
-在**中间件阶段**和**请求处理阶段**执行过程中，**Handler**提供了流程控制函数```next```控制处理流程。
+在**中间件阶段**和**请求处理阶段**执行过程中，**Handler**提供了流程控制函数```next```控制请求处理流程。
 
 **Handler的流程控制函数```next```在中间件阶段与Express中间件（ServiceCore使用的中间件系统）中的```next```拥有一致的使用体验：**
 
@@ -227,94 +202,106 @@
 
 ## 设置请求路径
 
-ServiceCore绑定Handler时，将获取待绑定列表中每个Handler设置的请求路径，对请求路径做出校正并缓存请求路径规则与Handler的映射关系。
+在[Web服务](/guide/web-service.html#设置请求路径)一章中，我们已经通过重写```static getRoutePath()```实现了设置**Handler**的请求路径。
 
-::: tip 路径校正规则
-Handler中设置的请求路径不以```'/'```开头时，ServiceCore将自动为请求路径附加```'/'```前缀。
+接下来我们将讨论在**设置请求路径**时的注意事项：
+
+- **请求路径**为非空字符串。
+  > **ServiceCore**绑定**Handler**时将校验请求路径的有效性，如果请求路径无效将拒绝绑定。
+
+- **请求路径**使用```'/'```开头。
+  > 请求路径不以```'/'```开头时，**ServiceCore**将自动附加```'/'```作为前缀。
+
+::: tip 说明
+没有重写```static getRoutePath()```的**自定义Handler**将在客户端请求```'/'```（根路径）时被命中。
 :::
 
-::: warning 注意
-在全局拦截器默认行为下，收到用户请求时会**检查用户请求路径是否命中某个Handler的请求路径规则**，若未命中直接返回404状态码，不再进入全局中间件阶段和Handler处理阶段。
+## 初始化和析构
+
+**Handler**的初始化和析构标志着**Handler**生命周期的开始和结束：
+
+- 客户端请求处理进入**Handler阶段**后，**ServiceCore**将创建与请求路径对应的**Handler实例**并发起[Handler初始化](#handler初始化)。
+- 在**Handler**任意处理阶段，返回实例```res```向客户端返回了数据时将触发[Handler析构](#handler析构)。至此，**Handler**生命周期结束。
+
+::: tip 提示
+通常，[Handler初始化](#handler初始化)与[Handler析构](#handler析构)时执行相反的资源操作，否则可能导致内存泄露。
 :::
 
-通过重写Handler的```static getRoutePath()```设置请求路径，**实现Handler时必须设置请求路径。**
+### Handler初始化
 
-样例代码中实现了一个请求路径为```'/Test.do'```的Handler：
+在**自定义Handler**时，通过重写实例方法```initHandler()```定制**Handler**的初始化行为。
+
+通常，我们在**Handler初始化**时根据客户端请求情况创建处理过程中使用的资源，并将这些资源提升为实例属性在整个**Handler生命周期**中共享：
+
+::: danger 注意
+重写```initHandler()```时必须执行```super```操作，否则**Handler**无法正常进入[Handler析构](#handler析构)。
+:::
 
 ```javascript
 const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  // 重写getRoutePath()时仅支持return方式设置请求路径
-  static getRoutePath() {
-    return '/Test.do';
+  initHandler(serviceCore, req, res) {
+    // 执行super操作
+    super.initHandler(serviceCore, req, res);
+    // 创建一个在整个生命周期中共享的基础输出器
+    this.logger = new Core.BaseLogger();
   }
 }
 
-// 构建并启动ServiceCore
-const serviceCore = new Core.ServiceCore();
-serviceCore.bind([Handler]);
-serviceCore.start();
 ```
 
-## Handler初始化
-
-**每次ServiceCore接收到有效请求时，将创建与请求路径对应Handler的实例，实例化后执行实例的```initHandler()```发起Handler初始化指令。初始化过程中产生了未捕获的异常将进入[统一错误处理](#统一错误处理)。**
-
-::: tip 提示
-Handler初始化阶段通常会创建请求处理过程中需要的**静态资源**和**动态资源**，这些资源可以通过挂载至```this```的方式在整个Handler生命周期中共享。初始化阶段中创建的资源需要在[Handler析构](#handler析构)阶段释放，否则可能导致内存泄露。
-
-- 动态资源：与用户请求相关的资源，比如：链路追踪器、日志输出器等。
-- 静态资源：与用户请求无关的资源，比如：数据库操作实例、RPC通信实例等。
-:::
-
-ServiceCore发起Handler初始化指令通过执行```await initHandler()```。因此，如果需要异步操作时阻塞流程可以使用```Promise```实现。
-
-::: danger 注意
-初始化阶段通常不执行向用户返回处理结果的动作。若在此阶段需要向用户返回，通过操作用户返回实例```res```即可，向用户返回后将直接进入[Handler析构](#handler析构)阶段。
-:::
-
-样例代码中展示了同步/异步初始化操作：
-
-::: danger 注意
-重写```initHandler```时必须执行```super.initHandler()```，否则Handler将无法正常进入[Handler析构](#handler析构)阶段。
-:::
+**ServiceCore通过调用```await initHandler()```触发Handler初始化**。因此，我们可以使用```Promise```处理**ServiceCore**等待初始化过程中异步操作完成再分发处理流程的场景：
 
 ```javascript
 const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  // 设置请求路径
-  static getRoutePath() {
-    return '/Test.do';
+  initHandler(serviceCore, req, res) {
+    // 执行super操作
+    super.initHandler(serviceCore, req, res);
+    // 需要ServiceCore等待异步行为时使用Promise
+    return new Promise((resolve) => {
+      // ...
+      // 异步操作结束后执行resolve()
+      resolve();
+    });
   }
+}
+```
 
-  // 同步初始化 - 实例化Logger后，请求将继续处理
+### Handler析构
+
+在**自定义Handler**时，通过重写实例方法```destroyHandler()```定制**Handler**的析构行为。
+
+需要注意的是，**Handler进入析构阶段时，返回实例```res```已向客户端返回处理结果**。因此，我们在**Handler析构**中对请求实例```req```和返回实例```res```的操作应仅保留读取行为。
+
+---
+
+我们可以通过计算客户端请求进入**Handler初始化**阶段和**Handler析构**阶段的时间差得到处理耗时：
+
+```javascript
+const Core = require('node-corejs');
+
+// 自定义Handler
+class Handler extends Core.Handler {
+  // Handler初始化
   initHandler(serviceCore, req, res) {
     super.initHandler(serviceCore, req, res);
     this.logger = new Core.BaseLogger();
-    this.logger.log('处理开始');
+    this.startTime = new Date();
+    this.logger.log('开始处理用户请求...');
   }
 
-  // 异步初始化 - 实例化Logger后，1秒后请求将继续处理
-  initHandler(serviceCore, req, res) {
-    return new Promise((resolve) => {
-      super.initHandler(serviceCore, req, res);
-      this.logger = new Core.BaseLogger();
-      this.logger.log('处理开始');
-      setTimeout(() => resolve(), 1000);
-    });
-  }
-
-  // 定义GET请求处理
+  // GET请求处理
   getHandler(req, res, next) {
-    next('done');
+    setTimeout(() => { next() }, 1000);
   }
 
-  // 处理完成
-  onFinish(data, req, res) {
-    super.onFinish(data, req, res);
-    this.logger.log('处理完成');
+  // Handler析构
+  destroyHandler(req, res) {
+    const duration = (new Date()) - this.startTime;
+    this.logger.log(`用户[${req.method.toUpperCase()}]请求处理结束,用时:[${duration}]毫秒`);
   }
 }
 
@@ -324,58 +311,89 @@ serviceCore.bind([Handler]);
 serviceCore.start();
 ```
 
-## Handler中间件
+## 中间件系统
 
-**Handler中间件支持所有Express生态中间件，支持[动态中间件](/guide/dynamic-middleware)**。本节仅介绍Handler级别中间件的基础用法，[动态中间件](/guide/dynamic-middleware)将于高阶功能中介绍。**中间件执行过程中产生了未捕获的异常将进入[统一错误处理](#统一错误处理)。**
+**Handler的中间件系统支持动态中间件且兼容Express生态。**
 
-::: tip 提示
-动态中间件包括：
+::: tip 说明
 
-- 处理每个用户请求时，根据实际请求情况动态生成中间件列表。
-- 执行每个中间件时，根据实际请求情况或上一个中间件结果控制中间件执行行为，比如丢弃执行结果、跳过执行等。
+**动态中间件**指的是根据当前上处理情况动态执行中间件的能力：
+
+- **动态中间件列表**，即：根据每次客户端请求情况动态生成应用于处理链路的中间件列表。
+- **中间件链路控制**，即：中间件列表中的每个中间件分发/执行完成时，根据当前处理上下文控制中间件执行行为，比如跳过执行、丢弃执行结果等。
+
 :::
 
-::: danger 注意
-在Handler中间件阶段应尽量使用流程控制方法```next()```控制处理流程，而不是直接操作用户返回实例```res```。
-
-- 执行```next(err)```：Handler流程控制将分发请求至[统一错误处理](#统一错误处理)。
-- 执行```next(data)```：Handler流程控制将分发请求至[统一完成处理](#统一完成处理)。
-- 执行```next('commit')```：**仅在中间件调用确认时支持使用**，Handler流程控制将执行当前中间件。
-- 执行```next()```、```next(null)```或```next(undefined)```：Handler流程控制将发起下一个位置中间件的调用确认。在调用确认阶段进行此操作表示跳过当前中间件执行，直接发起下一个中间件的调用确认；在完成确认阶段进行此操作则认为确认完成，发起下一个中间件的调用确认。
-:::
-
-自定义Handler时，通过重写```getMiddlewares()```配置待执行的Handler中间件列表。Handler流程控制通过执行```await getMiddlewares()```获取待执行的中间件列表，因此可以通过```Promise```异步设置中间件列表。
-
-样例代码中展示了同步/异步设置中间件列表：
+在**自定义Handler**时，我们通过重写实例方法```getMiddlewares()```设置处理客户端请求时使用的中间件列表：
 
 ```javascript
-const express = require('express');
 const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  // 设置请求路径
-  static getRoutePath() {
-    return '/source';
-  }
-
-  // 同步返回中间件
   getMiddlewares(req, res) {
-    return [express.static('./source')];
+    // 根据客户端请求动态返回中间件列表
+    return [...];
   }
+}
+```
 
-  // 异步返回中间件
+当客户端请求处理流程进入**Handler中间件阶段**时，将调用```await getMiddlewares()```获取处理此次请求使用的中间件列表。因此，我们可以使用```Promise```处理异步构造中间件列表的场景：
+
+```javascript
+const Core = require('node-corejs');
+
+class Handler extends Core.Handler {
   getMiddlewares(req, res) {
+    // 需要异步构建中间件列表时使用Promise
     return new Promise((resolve) => {
-      setTimeout(() => resolve([express.static('./source')]), 1000);
+      // ...
+      // 异步操作结束后执行resolve()
+      resolve([...]);
     });
   }
 }
-
-// 构建并启动ServiceCore
-const serviceCore = new Core.ServiceCore();
-serviceCore.bind([Handler]);
-serviceCore.start();
 ```
+
+中间件列表中每个中间件的调用将遵循：执行确认 -> 实际执行 -> 完成确认。我们应尽可能的使用[流程控制函数](#流程控制函数)```next```控制处理流程，而不是直接操作返回实例```res```。
+
+--- 
+
+### 中间件执行确认
+
+**Handler中间件系统**分发中间件时，首先调用实例方法```onWillExecMiddleware()```发起**中间件执行确认**。我们可以根据客户端请求参数、当前将要执行的中间件等上下文信息选择：
+
+- 确认执行当前分发的中间件。
+- 跳过此中间件执行，分发下一个中间件。
+
+在**中间件执行确认**阶段，我们可以使用：
+
+- 执行```next(err)```：触发[统一错误处理](#统一错误处理)。
+- 执行```next(data)```：触发[统一完成处理](#统一完成处理)。
+- 执行```next('commit')```：确认执行当前分发的中间件，进入实际执行阶段。中间件执行完成后将发起[中间件完成确认](#中间件完成确认)。
+- 执行```next()```、```next(null)```、```next(undefined)```：跳过当前将要分发的中间件的实际执行和完成确认阶段，直接发起下一个中间件的执行确认。
+
+如果在**自定义Handler**时没有重写```onWillExecMiddleware()```，**Handler中间件系统**在执行确认阶段将自动执行```next('commit')```。因此，所有中间件都将进入实际执行阶段。
+
+---
+
+### 中间件完成确认
+
+**Handler中间件系统**将在中间件实际执行完成后，调用```onDidExecMiddleware()```发起**中间件完成确认**。我们可以根据客户端请求参数、当前执行完成的中间件、执行结果等上下文信息选择：
+
+- 分发下一个中间件。
+- 直接向客户端返回处理结果。
+
+在**中间件完成确认**阶段，我们可以使用：
+
+- 执行```next(err)```：触发[统一错误处理](#统一错误处理)。
+- 执行```next(data)```：触发[统一完成处理](#统一完成处理)。
+- 执行```next()```、```next(null)```、```next(undefined)```：发起下一个中间件的执行确认。
+
+::: tip 提示
+在```onDidExecMiddleware()```中执行```next('commit')```将触发[统一完成处理](#统一完成处理)，此时```data```为```'commit'```。
+:::
+
+如果在**自定义Handler**时没有重写```onDidExecMiddleware()```，**Handler中间件系统**在完成确认阶段将自动执行```next()```直接分发下一个中间件。
 
 ## 请求预处理
 
@@ -535,55 +553,6 @@ class Handler extends Core.Handler {
   // 统一错误处理
   onError(err, req, res) {
     res.status(500).end();
-  }
-}
-
-// 构建并启动ServiceCore
-const serviceCore = new Core.ServiceCore();
-serviceCore.bind([Handler]);
-serviceCore.start();
-```
-
-## Handler析构
-
-在Handler处理过程的任意阶段，用户返回实例```res```执行了返回行为时，则Handler处理结束，进入析构阶段。
-
-::: danger 警告
-Handler析构阶段执行时，用户返回实例```res```已向用户返回。因此，在此阶段中仅允许对用户请求实例```req```和用户返回实例```res```执行读操作；对```req```和```res```执行写操作或业务操作无实际意义。
-:::
-
-::: tip 提示
-通常Handler析构阶段与[Handler初始化](#handler初始化)阶段的行为相互对应，在析构阶段中释放初始化阶段创建的资源。
-:::
-
-样例代码中实现了记录用户请求```/Test.do```的处理时间：
-
-```javascript
-const Core = require('node-corejs');
-
-class Handler extends Core.Handler {
-  // 设置请求路径
-  static getRoutePath() {
-    return '/Test.do';
-  }
-
-  // Handler初始化
-  initHandler(serviceCore, req, res) {
-    super.initHandler(serviceCore, req, res);
-    this.logger = new Core.BaseLogger();
-    this.startTime = new Date();
-    this.logger.log('开始处理用户请求...');
-  }
-
-  // GET请求处理
-  getHandler(req, res, next) {
-    setTimeout(() => { next() }, 1000);
-  }
-
-  // Handler析构
-  destroyHandler(req, res) {
-    const duration = (new Date()) - this.startTime;
-    this.logger.log(`用户[${req.method.toUpperCase()}]请求处理结束,用时:[${duration}]毫秒`);
   }
 }
 
