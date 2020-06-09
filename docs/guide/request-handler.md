@@ -76,7 +76,7 @@
 
   - **使用场景**：[Handler动态中间件](/guide/dynamic-middleware.html)的核心API，提供了在执行中间件前确认/跳过中间件执行的能力。
 
-  - **调用时机**：**Handler中间件阶段**每次尝试分发中间件时，都将调用此方法发起对当前将要分发的中间件执行确认。在此方法中使用流程控制函数```next```选择执行或跳过当前将要分发的中间件。
+  - **调用时机**：**Handler中间件阶段**每次尝试分发中间件时，都将调用此方法发起对当前将要分发的中间件执行确认。在此方法中使用[流程控制函数](#流程控制函数)```next```选择执行或跳过当前将要分发的中间件。
 
   - **注意事项**：重写时无需执行```super```操作。未重写此方法时，每个中间件都将被确认执行。
 
@@ -84,7 +84,7 @@
 
   - **使用场景**：[Handler动态中间件](/guide/dynamic-middleware.html)的核心API，提供了在中间件执行完成后临时处理执行结果的能力。
 
-  - **调用时机**：**Handler中间件阶段**每个中间件执行完成后，都将调用此方法确认当前中间件执行完成。在此方法中根据当前请求处理情况使用流程控制函数```next```选择直接向客户端返回处理结果或尝试分发下一个中间件。
+  - **调用时机**：**Handler中间件阶段**每个中间件执行完成后，都将调用此方法确认当前中间件执行完成。在此方法中根据当前请求处理情况使用[流程控制函数](#流程控制函数)```next```选择直接向客户端返回处理结果或尝试分发下一个中间件。
 
   - **注意事项**：重写时无需执行```super```操作。未重写此方法时，将确认当前中间件执行完成直接分发下一个中间件。
 
@@ -100,7 +100,7 @@
 
   - **使用场景**：根据**Handler中间件阶段**的处理结果进行[请求预处理](#请求预处理)，比如：客户端请求参数聚合、校验等。
 
-  - **调用时机**：**Handler中间件阶段**将于最后一个中间件执行完成被确认后结束，此后进入**Handler请求处理阶段**。在**Handler请求处理阶段**中，首先调用此方法进行[请求预处理](#请求预处理)，根据预处理情况使用流程控制函数```next```选择直接向客户端返回处理结果或进行[请求后处理](#请求后处理)。
+  - **调用时机**：**Handler中间件阶段**将于最后一个中间件执行完成被确认后结束，此后进入**Handler请求处理阶段**。在**Handler请求处理阶段**中，首先调用此方法进行[请求预处理](#请求预处理)，根据预处理情况使用[流程控制函数](#流程控制函数)```next```选择直接向客户端返回处理结果或进行[请求后处理](#请求后处理)。
 
   - **注意事项**：重写时无需执行```super```操作。未重写此方法时，将直接分发客户端请求进入[请求后处理](#请求后处理)。
 
@@ -108,7 +108,7 @@
 
   - **使用场景**：执行客户端请求对应的业务处理逻辑，即[请求后处理](#请求后处理)。
 
-  - **调用时机**：在**Handler请求处理阶段**的[请求预处理](#请求预处理)过程中执行```next()```时，**Handler**将尝试调用与客户端请求方式匹配的实例方法进入[请求后处理](#请求后处理)，根据实际业务处理结果使用流程控制函数```next```选择触发[统一完成处理](#统一完成处理)或[统一错误处理](#统一错误处理)。
+  - **调用时机**：在**Handler请求处理阶段**的[请求预处理](#请求预处理)过程中执行```next()```时，**Handler**将尝试调用与客户端请求方式匹配的实例方法进入[请求后处理](#请求后处理)，根据实际业务处理结果使用[流程控制函数](#流程控制函数)```next```选择触发[统一完成处理](#统一完成处理)或[统一错误处理](#统一错误处理)。
 
   - **注意事项**：重写时无需执行```super```操作。如果在**Handler**中没有实现与客户端请求方式匹配的实例方法，将调用```defaultHandler()```执行默认后处理逻辑。
 
@@ -123,7 +123,7 @@
 ::: tip 说明
 在[请求预处理](#请求预处理)即将结束时，**Handler**将尝试调用方法名为```${req.method.toLowerCase()}Handler```的实例方法进入[请求后处理](#请求后处理)。
 
-因此，我们在**自定义Handler**时根据请求方式实现对应的```methodHandler()```即可捕获对应类型的客户端请求。比如，我们实现```postHandler()```以对来自客户端的POST请求进行后处理。
+因此，我们在**自定义Handler**时根据请求方式实现对应的```methodHandler()```即可指定对应类型的客户端请求的后处理逻辑。比如，我们实现实例方法```postHandler()```以对来自客户端的POST请求进行后处理。
 :::
 
 ---
@@ -134,15 +134,15 @@
 
   - **使用场景**：对客户端请求处理完成后的业务逻辑进行[统一处理](#统一完成处理)，比如：向客户端返回处理结果。
 
-  - **调用时机**：在**Handler**任意处理阶段使用流程控制函数执行```next(data)```时将认为请求处理完成，调用此方法进行完成处理。
+  - **调用时机**：在**Handler**任意处理阶段使用[流程控制函数](#流程控制函数)执行```next(data)```时将认为请求处理完成，调用此方法进行完成处理。
 
-  - **注意事项**：重写时无需执行```super```操作，默认直接调用```res.status(200).send(data)```向客户端返回200状态码和流程控制函数```next```带入的数据。
+  - **注意事项**：重写时无需执行```super```操作，默认直接调用```res.status(200).send(data)```向客户端返回200状态码和[流程控制函数](#流程控制函数)```next```带入的数据。
 
 - ```onError(error, req, res)```
 
   - **使用场景**：对客户端请求处理过程中产生的异常进行[统一处理](#统一错误处理)。
 
-  - **调用时机**：**Handler**任意处理阶段中产生了未被捕获的异常或使用流程控制函数执行```next(err)```时，将调用此方法进行错误处理。
+  - **调用时机**：**Handler**任意处理阶段中产生了未被捕获的异常或使用[流程控制函数](#流程控制函数)执行```next(err)```时，将调用此方法进行错误处理。
 
   - **注意事项**：重写时无需执行```super```操作，默认直接调用```res.status(500).end()```向客户端返回500状态码。
 
@@ -164,14 +164,14 @@
 
 ---
 
-在**中间件阶段**和**请求处理阶段**执行过程中，**Handler**提供了流程控制函数```next```控制请求处理流程。
+在**中间件阶段**和**请求处理阶段**执行过程中，**Handler**提供了**流程控制函数**控制请求处理流程。
 
-**Handler的流程控制函数```next```在中间件阶段与Express中间件（ServiceCore使用的中间件系统）中的```next```拥有一致的使用体验：**
+**Handler中的```next```在中间件阶段与Express中间件（ServiceCore使用的中间件系统）中的```next```拥有一致的使用体验：**
 
 - 执行```next(err)```时，触发[统一错误处理](#统一错误处理)。
 - 执行```next()```、```next(null)```、```next(undefined)```时，分发下一个中间件。
 
-**同时，Handler的流程控制函数```next```拓展了动态中间件控制指令：**
+**同时，Handler中的```next```拓展了动态中间件控制指令：**
 
 - 在**任意处理阶段**，执行```next(data)```时，触发[统一完成处理](#统一完成处理)。
 - 在**中间件阶段**确认中间件执行的HOOK函数```onWillExecMiddleware()```中执行```next('commit')```时，表示确认执行中间件。
@@ -190,14 +190,14 @@
 
 ---
 
-**Handler处理流程每个阶段中的流程控制函数```next```使用方式稍有不同：**
+**Handler处理流程每个阶段中的```next```使用方式稍有不同：**
 
 |                    | ```next()``` | ```next(null)``` | ```next(undefined)``` | ```next('commit')``` | ```next(err)``` | ```next(data)``` |
 |:------------------ | :----------- | :--------------- | :-------------------- | :------------------- | :-------------- | :--------------- | 
 | 中间件阶段 - 执行确认 | 跳过执行，分发下一个中间件 | 跳过执行，分发下一个中间件 | 跳过执行，分发下一个中间件 | 确认执行中间件 | 触发[统一错误处理](#统一错误处理) | 触发[统一完成处理](#统一完成处理) |
 | 中间件阶段 - 执行过程 | 分发下一个中间件 | 分发下一个中间件 | 分发下一个中间件 | 触发[统一完成处理](#统一完成处理) | 触发[统一错误处理](#统一错误处理) | 触发[统一完成处理](#统一完成处理) |
 | 中间件阶段 - 完成确认 | 分发下一个中间件 | 分发下一个中间件 | 分发下一个中间件 | 触发[统一完成处理](#统一完成处理) | 触发[统一错误处理](#统一错误处理) | 触发[统一完成处理](#统一完成处理) |
-| 请求处理阶段 - 预处理 | 分发下一个中间件 |  触发[统一完成处理](#统一完成处理) |  触发[统一完成处理](#统一完成处理) |  触发[统一完成处理](#统一完成处理) | 触发[统一错误处理](#统一错误处理) | 触发[统一完成处理](#统一完成处理) |
+| 请求处理阶段 - 预处理 | 触发[请求后处理](#请求后处理) |  触发[统一完成处理](#统一完成处理) |  触发[统一完成处理](#统一完成处理) |  触发[统一完成处理](#统一完成处理) | 触发[统一错误处理](#统一错误处理) | 触发[统一完成处理](#统一完成处理) |
 | 请求处理阶段 - 后处理 | 触发[统一完成处理](#统一完成处理) | 触发[统一完成处理](#统一完成处理) |  触发[统一完成处理](#统一完成处理) |  触发[统一完成处理](#统一完成处理) | 触发[统一错误处理](#统一错误处理) | 触发[统一完成处理](#统一完成处理) |
 
 ## 设置请求路径
@@ -397,167 +397,175 @@ class Handler extends Core.Handler {
 
 ## 请求预处理
 
-Handler中间件阶段结束后（即：中间件列表最后一个中间件执行完成且被确认后），流程控制将分发用户请求进入预处理阶段继续处理。一些通用业务层逻辑（比如：请求参数解析与校验）可以在此阶段进行，通过重写```preHandler()```自定义请求预处理行为。
+**Handler中间件阶段**结束后将进入**Handler请求处理**阶段进行实际业务处理，而**请求预处理**是**Handler请求处理**的首个处理环节。
 
-::: danger 注意
-在预处理阶段即将结束时，应使用流程控制方法```next()```控制处理流程，而不是直接操作用户返回实例```res```。
+::: tip 说明
+当中间件列表的最后一个中间件发生以下行为时将**Handler中间件阶段**结束：
 
-- 执行```next()```：Handler流程控制将会根据用户请求方式，分发用户请求至对应的```Method Handler```执行[请求后处理](#请求后处理)。比如：用户请求方式为POST，Handler将调用```postHandler()```进行后处理。
-- 执行```next(err)```：Handler流程控制将分发请求至[统一错误处理](#统一错误处理)。
-- 执行```next(data)```：Handler流程控制将分发请求至[统一完成处理](#统一完成处理)。
+- 在**中间件执行确认**时被跳过执行。
+- 在**中间件完成确认**时被确认完成。
 :::
 
-::: warning 注意
+在**自定义Handler**时，通过重写实例方法```preHandler()```定制**请求预处理**环节的处理逻辑。通常，我们在**请求预处理**中完成对来自客户端上送参数的基础处理。
 
-- 请求预处理默认行为：直接执行```next()```进入后处理阶段，即：在不重写```preHandler()```时，Handler中间件阶段结束后直接进入[请求后处理](#请求后处理)。
-- 预处理阶段与中间件阶段的流程控制方法```next()```行为不同：执行```next(data)```时，后处理阶段中```data```可能为```null```或```undefined```，此时直接进入[统一完成处理](#统一完成处理)；而中间件阶段的流程控制方法入参为```null```或```undefined```表示执行下一个中间件。
+::: tip 提示
+实现**请求预处理**逻辑时，我们同样应尽可能的使用[流程控制函数](#流程控制函数)```next```控制处理流程，而不是直接操作返回实例```res```。
+
+- 执行```next()```：触发[请求后处理](#请求后处理)。
+- 执行```next(err)```：触发[统一错误处理](#统一错误处理)。
+- 执行```next(data)```：触发[统一完成处理](#统一完成处理)。
 :::
 
-样例代码展示了在预处理阶段处理基础入参：
+让我们来看一个聚合客户端请求中的```query```和```body```的**请求预处理**实现：
 
 ```javascript
-const Core = require('node-codejs');
+const Core = require('node-corejs');
+const bodyParser = require('body-parser');
+
+const jsonParserMiddleware = bodyParser.json({ limit: 2 * 1024 * 1024 });
+const qsParserMiddleware = bodyParser.urlencoded({ limit: 2 * 1024 * 1024, extended: true });
 
 class Handler extends Core.Handler {
-  // 设置请求路径
-  static getRoutePath() {
-    return '/Test.do';
-  }
-
-  // 请求预处理
   preHandler(req, res, next) {
+    const body = req.body;
     const query = req.query;
-    const value = query.value;
-    // value未填或无效时返回200状态码下的错误文案
-    if (value === '' || isNaN(value)) {
-      next('必填参数为空');
-    }
-    // value为0时返回500状态码
-    else if (parseInt(value) === 0) {
-      next(new Error('value不能为0'))
-    }
-    // value为其他时执行后处理
-    else {
-      this.value = value;
-      next();
-    }
-  }
-
-  // GET请求后处理
-  getHandler(req, res, next) {
-    next((parseInt(this.value) + 1).toString());
+    req.requestParams = Object.assign({}, body, query);
+    next();
   }
 }
 
-// 构建并启动ServiceCore
-const serviceCore = new Core.ServiceCore();
+// 使用body-parser作为全局中间件解析body参数
+const serviceCore = new Core.ServiceCore({
+  middlewares: [jsonParserMiddleware, qsParserMiddleware]
+});
 serviceCore.bind([Handler]);
 serviceCore.start();
+
 ```
+
+如果在**自定义Handler**时没有重写```preHandler()```，**Handler**在**请求预处理**中自动执行```next()```进入[请求后处理](#请求后处理)。
 
 ## 请求后处理
 
-在Handler请求预处理阶段即将结束时，若通过流程控制方法```next()```决定进入后处理阶段，Handler流程控制将根据用户请求方式执行对应的```Method Handler```。比如：用户请求方式为POST，核心流程将调用```postHandler()```执行后续请求处理。用户请求对应的实际业务处理通常发生在此阶段，通过重写对应的```Method Handler```自定义请求后处理行为。
+在**请求预处理**环节使用[流程控制函数](#流程控制函数)执行```next()```时，**Handler**将尝试调用方法名为```${req.method.toLowerCase()}Handler```的实例方法进入**请求后处理**。
 
-::: danger 注意
-在后处理阶段即将结束时，应使用流程控制方法```next()```控制处理流程，而不是直接操作用户返回实例```res```。
+因此，我们在**自定义Handler**时根据请求方式实现对应的```methodHandler()```即可指定对应类型的客户端请求的后处理逻辑。比如，我们实现实例方法```postHandler()```以对来自客户端的POST请求进行后处理。
 
-- 执行```next(err)```：核心流程将分发请求至[统一错误处理](#统一错误处理)。
-- 执行```next(data)```：核心流程将分发请求至[统一完成处理](#统一完成处理)。
+::: tip 说明
+同样，我们应尽可能在**请求后处理**中使用[流程控制函数](#流程控制函数)```next```控制处理流程，而不是直接操作返回实例```res```。
+
+- 执行```next(err)```：触发[统一错误处理](#统一错误处理)。
+- 执行```next(data)```：触发[统一完成处理](#统一完成处理)。
+
+需要注意的是，在**请求后处理**中执行```next()```时，将认为```data```为```undefined```触发[统一完成处理](#统一完成处理)。
 :::
 
-::: warning 注意
+让我们在**请求预处理**样例的基础上，添加**请求后处理**逻辑将参数的聚合结果向客户端返回：
 
-- 请求后处理默认行为：根据请求方式构造对应的```Method Handler```方法名，若```Method Handler```在Handler中被重写则发起调用；否则调用默认后处理方法```_defaultHandler()```。默认后处理方法将直接向用户返回404状态码。
-- 后处理阶段、预处理阶段和中间件阶段的流程控制方法```next()```行为不同：在后处理阶段执行```next()```时，Handler将自动转换为```next(undefined)```，将分发请求至[统一完成处理](#统一完成处理)。
-:::
+```javascript {16,17,18,19}
+const Core = require('node-corejs');
+const bodyParser = require('body-parser');
 
-样例代码中实现了使用GET方式请求```/Test.do```时返回query参数的业务：
+const jsonParserMiddleware = bodyParser.json({ limit: 2 * 1024 * 1024 });
+const qsParserMiddleware = bodyParser.urlencoded({ limit: 2 * 1024 * 1024, extended: true });
+
+class Handler extends Core.Handler {
+  // 请求预处理 - 聚合query和body
+  preHandler(req, res, next) {
+    const body = req.body;
+    const query = req.query;
+    req.requestParams = Object.assign({}, body, query);
+    next();
+  }
+
+  // 请求后处理 - 向客户端返回参数聚合结果
+  postHandler(req, res, next) {
+    next(req.requestParams);
+  }
+}
+
+// 使用body-parser作为全局中间件解析body参数
+const serviceCore = new Core.ServiceCore({
+  middlewares: [jsonParserMiddleware, qsParserMiddleware]
+});
+serviceCore.bind([Handler]);
+serviceCore.start();
+
+```
+
+---
+
+**Handler**进入**请求后处理**时没有检测到与客户端请求方式对应的实例方法时，将调用```defaultHandler()```执行默认的后处理逻辑，即```res.status(404).end()```。
+
+因此，我们可以重写实例方法```defaultHandler()```统一处理无效的客户端请求：
 
 ```javascript
 const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  // 设置请求路径
-  static getRoutePath() {
-    return '/Test.do';
-  }
-
-  // 实现GET请求处理逻辑
-  getHandler(req, res, next) {
-    next(req.query);
+  // 向客户端返回404状态码和提示文字
+  defaultHandler(req, res, next) {
+    res.status(404).send('404 NOT FOUND');
   }
 }
 
-// 构建并启动ServiceCore
-const serviceCore = new Core.ServiceCore();
-serviceCore.bind([Handler]);
-serviceCore.start();
 ```
 
 ## 统一完成处理
 
-在Handler处理过程的任意阶段调用```next(data)```将进入统一完成处理。此阶段为请求处理的末端，通常需要操作用户返回实例```res```返回请求处理结果。通过重写```onFinish()```自定义统一完成处理行为。
+**Handler引入统一完成处理是为了提取向客户端返回请求处理结果逻辑**。因此，我们在**Handler**任意请求处理阶段期望向客户端返回处理结果时应该执行```next(data)```而不是操作返回实例```res```。
 
-::: danger 注意
-仅使用流程控制方法```next(data)```才能进入统一完成处理。通过操作用户返回实例```res```导致处理结束将直接进入[Handler析构](#handler析构)，不会进入此阶段。
+::: tip 说明
+通过操作返回实例```res```向客户端返回处理结果将直接触发[Handler析构](#handler析构)，不会进入**统一完成处理**。
 :::
 
-::: warning 注意
+[流程控制函数](#流程控制函数)执行```next(data)```表示请求处理完成，期望向客户端返回处理结果。此时，**Handler**将使用```next(data)```中的```data```调用实例方法```onFinish()```进行完成处理。
 
-- 在中间件阶段中，执行```next()```、```next(null)```或```next(undefined)```时，Handler流程控制将尝试发起中间件列表中的下一个中间件的调用确认而不是进入统一完成处理。
-- 在预处理阶段中，执行```next()```时与中间件阶段表现相同；而执行```next(null)```或```next(undefied)```时与中间件阶段不同，此时Handler流程控制将进入统一完成处理。
-- 在后处理阶段中，执行```next()```、```next(null)```或```next(undefined)```时，Handler流程控制将进入统一完成处理。
-:::
+我们可以通过重写实例方法```onFinish()```自定义**统一完成处理**逻辑。通常，在```onFinish()```中根据传入的```data```构建期望返回给客户端的内容，并操作返回实例```res```向客户端返回。
 
-默认行为下，统一完成处理使用```res.status(200).send()```向用户返回流程控制方法```next(data)```带入的```data```。
+---
 
-样例代码将以默认统一完成处理演示如何自定义统一完成处理行为：
+在```Core.Handler```中已经实现了默认的```onFinish()```。因此，如果在**自定义Handler**时没有修改**统一完成处理**的默认行为，则**Handler**向客户端返回200状态码和```data```。
 
 ```javascript
-const Core = require('node-codejs');
+const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  // 设置请求路径
-  static getRoutePath() {
-    return '/Test.do';
-  }
-
-  // 统一完成处理
+  // 默认的完成处理
   onFinish(data, req, res) {
     res.status(200).send(data);
   }
 }
-
-// 构建并启动ServiceCore
-const serviceCore = new Core.ServiceCore();
-serviceCore.bind([Handler]);
-serviceCore.start();
 ```
 
 ## 统一错误处理
 
-在Handler处理过程中出现了未被捕获的异常或任意阶段调用了```next(err)```时将进入统一错误处理。此阶段为请求处理的末端，用于统一收口请求处理过程中产生的异常，通常需要直接操作用户返回实例```res```返回请求处理结果。通过重写```onError()```自定义异常处理行为。
+**Handler**引入**统一错误处理**对请求处理过程中产生的异常进行收口。当出现以下行为时，将触发**统一错误处理**：
 
-样例将以默认统一错误处理演示使用方式：
+- **任意处理阶段**的同步逻辑中产生了未被捕获的异常。
+- **任意处理阶段**中使用[流程控制函数](#流程控制函数)执行了```next(err)```。
+
+::: warning 注意
+考虑到大多数发生在异步操作中的异常并不会影响应用程序的正常执行，**Handler**在实现错误捕获时：
+
+- 对于处理过程中产生的同步异常：对核心流程使用```try { ... } catch { ... }```自动捕获。
+- 对于处理过程中产生的异步异常：在[流程控制函数](#流程控制函数)中提供```next(err)```手动捕获。
+
+:::
+
+我们可以通过重写实例方法```onError()```自定义**统一错误处理**逻辑。与**统一完成处理**类似，在```onError()```中通常根据传入的```err```构建期望返回给客户端的内容，并操作返回实例```res```向客户端返回。
+
+---
+
+在```Core.Handler```中已经实现了默认的```onError()```。因此，如果在**自定义Handler**时没有修改**统一错误处理**的默认行为，则**Handler**向客户端返回500状态码。
 
 ```javascript
-const Core = require('node-codejs');
+const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  // 设置请求路径
-  static getRoutePath() {
-    return '/Test.do';
-  }
-
-  // 统一错误处理
+  // 默认的错误处理
   onError(err, req, res) {
     res.status(500).end();
   }
 }
-
-// 构建并启动ServiceCore
-const serviceCore = new Core.ServiceCore();
-serviceCore.bind([Handler]);
-serviceCore.start();
 ```
