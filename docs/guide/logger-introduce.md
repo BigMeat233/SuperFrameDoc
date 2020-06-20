@@ -319,7 +319,7 @@
 
     | 名称                                     | 描述                   | 产生原因                                 |
     | :-------------------------------------- | :--------------------- | :------------------------------------- |
-    | ```BASE_LOGGER_ERROR_TYPE_CANT_LOG```   | 日志输出器无法执行输出行为 | 日志输出器输出链路中产生了未被捕获的异常      |
+    | ```BASE_LOGGER_ERROR_TYPE_CANT_LOG```   | 日志输出器无法执行输出动作 | 日志输出器输出链路中产生了未被捕获的异常      |
     | ```BASE_LOGGER_ERROR_TYPE_CANT_INIT```  | 日志输出器无法构建/实例化  | 日志输出器构建/实例化过程中产生了未被捕获异常 |
     | ```BASE_LOGGER_ERROR_TYPE_CANT_START``` | 日志输出器无法启动        | 日志输出器启动时产生了未被捕获的异常         |
     | ```BASE_LOGGER_ERROR_TYPE_CANT_CLOSE``` | 日志输出器无法关闭        | 日志输出器关闭时产生了未被捕获的异常         |
@@ -330,7 +330,7 @@
 
     | Error                                | 描述                | 产生原因                           |
     | :----------------------------------- | :----------------- | :-------------------------------- |
-    | ```BASE_LOGGER_MESSAGE_CANT_LOG```   | 日志输出器无法输出日志 | 日志输出器执行输出行为时无法通过状态检验 |
+    | ```BASE_LOGGER_MESSAGE_CANT_LOG```   | 日志输出器无法输出日志 | 日志输出器执行输出动作时无法通过状态检验 |
     | ```BASE_LOGGER_MESSAGE_CANT_START``` | 日志输出器无法启动    | 日志输出器执行启动行为时无法通过状态校验 |
     | ```BASE_LOGGER_MESSAGE_CANT_CLOSE``` | 日志输出器无法关闭    | 日志输出器执行关闭行为时无法通过状态校验 |
 
@@ -420,6 +420,27 @@
 
   :::
 
+  ---
+
+  通常，应用程序中的**日志输出器**使用同一个**归档源目录**以实现日志的集中存储：
+
+  ```javascript
+  const Core = require('node-corejs');
+
+  // 公用的日志归档源目录
+  const sourcePath = './testlogs';
+
+  const logger1 = new Core.DateLogger({
+    env: 'prod',
+    params: { filePrefix: 'DateLogger1', sourcePath }
+  });
+
+  const logger2 = new Core.DateLogger({
+    env: 'prod',
+    params: { filePrefix: 'DateLogger2', sourcePath }
+  });
+  ```
+
 - #### ```filePrefix```
 
   设置此配置将指定**日期输出器**的**归档前缀**，默认值为```''```。
@@ -443,6 +464,60 @@
   需要注意的是，此配置与```filePrefix```和```filePrefixAsSourcePath```具有联动关系。因此，当我们对此配置指定的值违反联动关系时可能被**日期输出器**重置。
   
   对于联动关系的注意事项，我们将在[配置联动](#配置联动)一节中进行详细讨论。
+
+---
+
+让我们来看一个使用**归档前缀**构建**日志输出目录**和**日志输出文件**的🌰：
+
+```javascript
+const Core = require('node-corejs');
+
+const sourcePath = './testlogs';
+
+// 日志输出目录：./testlogs/DateLogger1
+// 日志输出文件：[归档日期].log
+const logger1 = new Core.DateLogger({
+  env: 'prod',
+  level: 'infos',
+  params: {
+    sourcePath,
+    filePrefix: 'DateLogger1',
+    filePrefixAsFileName: false,
+    filePrefixAsSourcePath: true,
+  }
+});
+
+// 日志输出目录：./testlogs/DateLogger2
+// 日志输出文件：DateLogger2.[归档日期].log
+const logger2 = new Core.DateLogger({
+  env: 'prod',
+  level: 'infos',
+  params: {
+    sourcePath,
+    filePrefix: 'DateLogger2',
+    filePrefixAsFileName: true,
+    filePrefixAsSourcePath: true,
+  }
+});
+
+// 日志输出目录：./testlogs
+// 日志输出文件：DateLogger3.[归档日期].log
+const logger3 = new Core.DateLogger({
+  env: 'prod',
+  level: 'infos',
+  params: {
+    sourcePath,
+    filePrefix: 'DateLogger3',
+    filePrefixAsFileName: true,
+    filePrefixAsSourcePath: false,
+  }
+});
+
+// 执行日志输出
+logger1.log('一条🌰日志');
+logger2.log('一条🌰日志');
+logger3.log('一条🌰日志');
+```
 
 - #### ```dateFormat```
   
@@ -468,6 +543,28 @@
   - 当选择**月**作为**归档周期**时，则需要包含的日期元素为年（```'YYYY'```）和月（```'MM'```），因此我们指定**归档日期格式**为：```'YYYY-MM'```。
 
   - 当选择**分**作为**归档周期**时，则需要包含的日期元素为年（```'YYYY'```）、月（```'MM'```）、日（```'DD'```）、时（```'HH'```）和分（```'mm'```），因此我们指定**归档日期格式**为：```'YYYY-MM-DD_HH_mm'```。
+
+  ---
+
+  现在，我们可以尝试构建一个以秒为**归档周期**的**日期输出器**：
+
+  ```javascript
+  const Core = require('node-corejs');
+
+  // 创建输出器
+  const logger = new Core.DateLogger({
+    env: 'prod',
+    level: 'infos',
+    params: {
+      sourcePath: './testlogs',
+      dateFormat: 'YYYY-MM-DD_HH_mm_ss' // 指定日期格式和归档周期
+    }
+  });
+  
+  // 每150ms执行一次日志输出
+  setInterval(() => { logger.log('一条🌰日志') }, 150);
+  ```
+
 
 - #### ```keepDateNum```
 
@@ -503,6 +600,35 @@
 - #### ```keepFileExt```
 
   设置此配置将指定**日期输出器**是否在**日志文件名**中附加文件后缀```.log```，默认值为```true```。
+
+---
+
+让我们来构建一个有点复杂的**日期输出器**：
+
+- 1. 保留最近5个周期内的日志。
+- 2. 将每秒内产生的日志归档至同一**日志文件**，超出```1KB```时自动分割。
+- 3. **日志文件**按照**归档前缀**存储，且**日志文件名**中不展示**归档前缀**。
+
+```javascript
+const Core = require('node-corejs');
+
+// 构建输出器
+const logger = new Core.DateLogger({
+  env: 'prod',
+  params: {
+    maxSize: 1024,                      // 最大日志文件体积为1K
+    keepDateNum: 5,                     // 保留最近5个周期
+    sourcePath: './testlogs',           // 归档源目录
+    filePrefix: 'ComplexLogger',        // 归档前缀
+    filePrefixAsFileName: false,        // 日志文件名不附加归档前缀
+    filePrefixAsSourcePath: true,       // 在归档源目录中创建归档前缀目录
+    dateFormat: 'YYYY-MM-DD_HH_mm_ss',  // 以秒作为归档周期
+  },
+});
+
+// 每100ms执行一次日志输出
+setInterval(() => logger.log(new Error(`一个🌰日志`)), 100);
+```
 
 ### 配置联动
 
@@ -554,9 +680,9 @@
 
 - 最后，根据最后一个偏移处**日志文件**的体积计算新的**归档偏移**决定接下来输出的目标**日志文件**，并缓存目标**日志文件**的体积。
 
-##### 在日期输出器执行输出行为时：
+##### 在日期输出器执行输出时：
 
-- 首先，计算输出行为造成的体积增量，并更新至缓存中的**日志文件**体积。
+- 首先，计算输出动作造成的体积增量，并更新至缓存中的**日志文件**体积。
 
 - 接下来，比较缓存中的**日志文件**体积与分割阈值```maxSize```的关系，决定输出目标**日志文件**。
 
@@ -569,37 +695,6 @@
 我们通过指定```keepDateNum```配置为```>0```的值启动**日期输出器**的自动清理功能。
 
 清理检索阶段**日期输出器**同样是在**归档源目录**中寻找**归档前缀**相同的**日志文件**。我们在[日志分割](#日志分割)已经知道，使用有效的**归档前缀**构建**日期输出目录**时将提升清理检索的效率。
-
-### 样例代码
-
-```javascript
-const Core = require('node-corejs');
-// 构造输出器
-const logger = new Core.DateLogger({
-  env: 'prod',
-  level: 'infos',
-  params: {
-    // 日志归档目录: ./logs/DateLogger_Test/
-    // 归档文件名称: DateLogger_Test.[归档时间].[归档偏移].log
-    // 日志归档规则: 保留最后5秒内的日志文件,每个日志文件不超过1K
-    sourcePath: './logs',
-    filePrefix: 'DateLogger_Test',
-    filePrefixAsSourcePath: true,
-    filePrefixAsFileName: true,
-    keepFileExt: true,
-    dateFormat: 'YYYY-MM-DD_HH_mm_ss',
-    keepDateNum: 5,
-    maxSize: 1024
-  },
-});
-
-// 每隔100ms输出日志
-let count = 0;
-setInterval(() => {
-  count += 1;
-  logger.log(new Error(`测试日志 -> [${count}]`));
-}, 100);
-```
 
 ## 文件输出器
 
@@ -620,7 +715,7 @@ setInterval(() => {
   - 自动模式：此模式下输出器将自动调用```start()```和```close()```控制资源的创建和释放，无需手动调用```start()```和```log()```，若强行调用将会输出警告日志。
 
     > - 输出器执行日志输出时将自动检测当前状态，若处于未启动状态则自动调用```start()```启动后再执行输出。
-    > - 若输出器在```timeout```配置的时间没有执行日志输出行为时将自动调用```close()```释放资源。
+    > - 若输出器在```timeout```配置的时间没有执行日志输出动作时将自动调用```close()```释放资源。
 
   - 手动模式：此模式下输出器不自动执行```start()```和```close()```，需要手动显式调用。
   :::
