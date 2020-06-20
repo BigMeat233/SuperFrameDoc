@@ -384,7 +384,7 @@ const serviceCore = new Core.ServiceCore({
 
 ---
 
-日志的输出等级、方法名和文案被存储在```Core.Macros```和```Core.Messages```中，我们可以通过提前修改这些宏变量的方式实现日志内容定制（比如：日志国际化）。
+日志的输出等级、方法名和文案存储在```Core.Macros```和```Core.Messages```中，我们可以通过提前修改这些宏变量的方式实现日志内容定制（比如：日志国际化）。
 
 - ```level```：日志输出等级
 
