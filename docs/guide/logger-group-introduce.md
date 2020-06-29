@@ -1,183 +1,199 @@
 # 日志输出组
 
-日志输出组支持聚合一个或多个[日志输出器](/guide/logger-introduce)应用于多点日志收集的场景。**日志输出组无法直接实例化，需要依赖[LoggerCore](#loggercore)执行```createLogger()```创建输出组实例**。
+**日志输出组**提供了将一个或多个[日志输出器](/guide/logger-introduce)进行组合的能力。在本章中，我们将对**日志输出组**的使用方式进行讨论。
 
-::: tip 说明
-本质上，日志输出组是一类特殊的[日志输出器](/guide/logger-introduce)，它们拥有相同的生命周期和使用方式。即：在业务层中输出器/组使用以下三个API管理生命周期或执行输出动作：
+我们已经知道，**日志输出组**无法通过实例化直接创建实例，而是依赖[LoggerCore](#loggercore)执行```createGroupLogger()```生成**日志输出组**实例。
 
-- ```log()```：输出日志
-- ```start()```：启动输出器/组
-- ```close()```：关闭输出器/组
+::: tip 提示
+在设计上，**日志输出组**使用了典型的工厂模式，即[LoggerCore](#loggercore)是生产**日志输出组**的工厂。
 
-与常规输出器不同的是：
+因此，我们在使用**日志输出组**进行组合日志输出需要两个步骤：
 
-- 日志输出组支持嵌入一个或多个日志输出器
-- 日志输出组无实际日志输出行为，仅通过操作嵌入其内的日志输出器进行输出
+- 将需要组合的[日志输出器](/guide/logger-introduce)组成**LoggerCore**的配置参数创建**LoggerCore**实例。
+
+- 使用**LoggerCore**实例执行```createGroupLogger()```并传入期望的**日志输出组**类型和功能配置参数，即可得到对应的**日志输出组**实例。
 :::
 
-## 行为触发
+## 行为控制
 
-引入LoggerCore和日志输出组后，将完全托管输出器的构建、启动、关闭和输出。此时，需要在LoggerCore实例化时配置输出器的行为触发方式间接控制输出器行为。
+我们无法直接触发**日志输出组**组合的[日志输出器](/guide/logger-introduce)的构建、启动和关闭。而是在实例化[LoggerCore](#loggercore)使用的配置参数中指定这些动作的触发方式，使**LoggerCore**和**日志输出组**在恰当的时间点自动执行这些动作。
 
 ### 输出器构建
 
-支持以下方式触发输出器构建：
+我们可以在[LoggerCore](#loggercore)配置参数中指定每个[日志输出器](/guide/logger-introduce)的```buildTrigger```以控制何时创建这些**日志输出器**的实例：
 
-- ```init```：在LoggerCore执行实例化时构建输出器。通常，持续型输出器（比如：[日期输出器](/guide/logger-introduce.html#日期输出器)）使用此方式触发构建。
-- ```create```：在LoggerCore执行```createLogger()```时构建输出器。通常，临时型输出器（比如：[文件输出器](/guide/logger-introduce.html#文件输出器)）使用此方式触发构建。
+- **```init```**：在**LoggerCore**实例化时触发**日志输出器**的构建动作。通常，持续型输出器使用此方式触发构建，比如：[日期输出器](/guide/logger-introduce.html#日期输出器)。
+
+- **```create```**：在**日志输出组**实例化时触发**日志输出器**的构建动作，即：**LoggerCore**实例执行```createGroupLogger()```时。通常，临时型输出器使用此方式触发构建，比如：[文件输出器](/guide/logger-introduce.html#文件输出器)。
 
 ::: tip 提示
-LoggerCore实例化动作仅执行一次。因此，使用```init```方式触发构建的输出器以LoggerCore维度单例的形式呈现，**将被LoggerCore创建的所有输出组实例共享**。
 
-在一些重复型业务中，可能希望业务每次执行时使用相同输出器收集基础日志，且使用不同的输出器收集每次业务的链路日志。
+原则上，**LoggerCore**实例化动作仅执行一次。因此，我们可以将期望被**LoggerCore**创建的所有**日志输出组**实例共享的**日志输出器**使用```init```方式触发构建。
 
-- 若期望LoggerCore每次生成的输出组实例**使用共享的输出器**，则使用```init```方式触发输出器构建。
-- 若期望LoggerCore每次生成的输出组实例**使用不同的输出器**，则使用```create```方式触发输出器构建。
+比如在一些频次型业务中，我们可能希望将每次业务执行时的基础信息通过相同的**日志输出器**进行收集，而每次业务执行链路产生的日志使用不同的**日志输出器**收集。此时，我们可以：
+
+- 指定**日志输出组**共享的**日志输出器**使用```init```方式触发构建。
+
+- 指定**日志输出组**非共享的**日志输出器**使用```create```方式触发构建。
+
+- 每次业务执行时，使用**LoggerCore**实例执行```createGroupLogger()```创建新的**日志输出组**实例用于链路中的日志收集。
+
 :::
 
 ### 输出器启动
 
-支持以下方式触发输出器启动：
+同样，我们可以在[LoggerCore](#loggercore)配置参数中指定每个[日志输出器](/guide/logger-introduce)的```startTrigger```以控制何时启动这些**日志输出器**的实例：
 
-- ```none```：LoggerCore和输出组不执行输出器启动。通常，支持自动启动的输出器（比如：[日期输出器](/guide/logger-introduce.html#日期输出器)、自动模式下的[文件输出器](/guide/logger-introduce.html#文件输出器)）使用此方式触发启动。
-- ```normal```：在日志输出组实例执行```start()```时启动输出器。通常，不支持自动启动的输出器（比如：手动模式下的[文件输出器](/guide/logger-introduce.html#文件输出器)）使用此方式触发启动。
+- **```none```**：**LoggerCore**和**日志输出组**不执**日志输出器**的启动动作。通常，支持自动启动的输出器使用此方式触发启动，比如：[日期输出器](/guide/logger-introduce.html#日期输出器)、自动模式下的[文件输出器](/guide/logger-introduce.html#文件输出器)。
+
+- **```normal```**：在**日志输出组**实例执行```start()```时触发**日志输出器**的启动动作，即：**日志输出器**伴随**日志输出组**启动。通常，不支持自动启动的输出器使用此方式触发启动，比如：手动模式下的[文件输出器](/guide/logger-introduce.html#文件输出器)。
   
 ### 输出器关闭
 
-支持以下方式触发输出器关闭：
+同样，我们可以在[LoggerCore](#loggercore)配置参数中指定每个[日志输出器](/guide/logger-introduce)的```closeTrigger```以控制何时关闭这些**日志输出器**的实例：
 
-- ```none```：LoggerCore和输出组不执行输出器关闭。通常，支持自动关闭的输出器（比如：自动模式下的[文件输出器](/guide/logger-introduce.html#文件输出器)）使用此方式触发关闭。
-- ```normal```：在日志输出组实例执行```close()```时关闭输出器。通常，不支持自动关闭的输出器（比如：[日期输出器](/guide/logger-introduce.html#日期输出器)、手动模式下的[文件输出器](/guide/logger-introduce.html#文件输出器)）使用此方式触发关闭。
+- **```none```**：**LoggerCore**和**日志输出组**不执**日志输出器**的关闭动作。通常，支持自动关闭的输出器使用此方式触发关闭，比如：自动模式下的[文件输出器](/guide/logger-introduce.html#文件输出器)。
 
-### 输出器输出
-
-目前仅支持通过执行日志输出组实例的```log()```触发输出器的输出动作。
+- **```normal```**：在**日志输出组**实例执行```close()```时触发**日志输出器**的关闭动作，即：**日志输出器**伴随**日志输出组**关闭。通常，不支持自动关闭的输出器使用此方式触发关闭，比如：[日期输出器](/guide/logger-introduce.html#日期输出器)、手动模式下的[文件输出器](/guide/logger-introduce.html#文件输出器)。
 
 ## LoggerCore
 
-在使用LoggerCore和日志输出组的场景中，业务层不再直接操作[日志输出器](/guide/logger-introduce)，而是通过实例化LoggerCore时配置输出器的[行为触发](#行为触发)方式间接控制输出器行为。
+我们已经知道，**LoggerCore**是生产**日志输出组**的工厂。
 
-LoggerCore每次执行```createLogger()```时根据业务层传入的日志输出组类型创建对应的输出组实例，并向输出组实例中植入根据LoggerCore配置生成的输出器。
+通常，我们把**LoggerCore**实例在相同的日志收集场景中共享。在业务执行时，使用```createGroupLogger()```创建**日志输出组**实例用于跟踪业务链路中产生的日志。
 
-::: tip 提示
-通常，不同业务场景使用不同的LoggerCore，在业务执行时使用```createLogger()```创建新的输出组实例用于业务中的日志收集。
-:::
+---
 
-### 运行原理
+**LoggerCore**实例创建**日志输出组**实例实际上执行了两个动作：
 
-LoggerCore在实例化时接收**输出器配置列表**，在执行```createLogger()```时接收**输出组类型**。LoggerCore将根据输出组类型创建对应的输出组实例；并向输出组实例中植入根据输出器配置列表构造的**输出器对象列表**。
+1. **LoggerCore**实例根据实例化时应用的配置参数，创建需要组合的[日志输出器](/guide/logger-introduce)实例并组成待植入**日志输出组**实例的**日志输出器实例列表**。
+
+2. 实例化执行```createGroupLogger()```时指定的**日志输出组**，得到对应的**日志输出组**实例。**日志输出组**实例化时会应用①中构造的**日志输出器实例列表**。
 
 ::: tip 说明
-**输出器对象是LoggerCore和输出组实例交互的数据结构**。其结构为：
-- ```logger```：输出器实例。
-- ```startTrigger```：开启输出器的触发方式。
-- ```closeTrigger```：关闭输出器的触发方式。
+
+**日志输出器实例列表**中的元素其实并不仅仅是**日志输出器**实例本身，而是一个包含了**日志输出器**的行为触发方式的```Object```，其结构为：
+
+- **```logger```**：**日志输出器**实例。
+
+- **```startTrigger```**：**日志输出器**的启动触发方式。
+
+- **```closeTrigger```**：**日志输出器**的关闭触发方式。
+
+**日志输出组**将根据触发方式在恰当的时间点执行**日志输出器**实例的相关动作。
+
 :::
-
-::: warning 注意
-输出器实例的创建行为完全在LoggerCore中进行，**LoggerCore将自动包装输出器实例为输出器对象**。
-
-**在执行```createLogger()```之前**，可以对LoggerCore实例的```onBuildLogger```属性进行更改以变更输出器实例创建行为。默认行为下，**LoggerCore将使用输出器配置列表中的个性化配置**合并至**基础配置**得到**最终的输出器配置**创建输出器实例。
-
-样例代码中使用默认行为演示如何变更输出器实例创建行为：
-
-```javascript
-const Core = require('node-corejs');
-const loggerCore = new Core.LoggerCore();
-// 必须在createLogger()前修改输出器创建行为
-loggerCore.onBuildLogger = (type, loggerConfigs, defaultConfigs) => {
-  // 输出器的功能配置参数为对象类型,优先合并
-  const params = Object.assign({}, defaultConfigs.params, loggerConfigs.params);
-  // 合并顶层对象和功能配置参数得到最终配置对象
-  const configs = Object.assign({}, defaultConfigs, loggerConfigs, { params });
-  // 进行实例化
-  return new type(configs);
-};
-const logger = loggerCore.createLogger();
-```
-:::
-
-- #### LoggerCore实例化
-  
-  1. 首先对传入的输出器配置列表进行分类：
-     - 将使用```init```方式触发构建的输出器配置推入LoggerCore的```_loggerConfigsUseInitTriggerList```属性。
-     - 将使用```create```方式触发构建的输出器配置推入LoggerCore的```_loggerConfigsUseCreateTriggerList```属性。
-
-  2. 然后迭代```_loggerConfigsUseInitTriggerList```属性中的输出器配置，创建对应的**输出器对象**推入```_baseLoggerObjects```属性。
-     
-  ::: tip 提示
-  **LoggerCore实例化动作仅执行一次**。因此，在实例化时创建使用```init```方式触发构建的输出器可以保证其为LoggerCore维度单例。
-  
-  **LoggerCore创建的每个输出组实例将共享```_baseLoggerObjects```中的输出器。**
-  :::
-
-- #### LoggerCore执行```createLogger()```
-
-  1. 首先迭代```_loggerConfigsUseCreateTriggerList```属性中的输出器配置，创建对应的**输出器对象**构成**临时输出器对象列表**（即：在执行```createLogger()```时创建使用```create```方式触发构建的输出器实例）。
-
-  2. 连接```_baseLoggerObjects```和**临时输出器对象列表**构成**完整的输出器对象列表**。
-
-  3. 最后根据**输出组类型（默认为[基础输出组](#基础输出组)）**和**完整的输出器对象列表**创建输出组实例。  
 
 ### 配置说明
 
-LoggerCore在实例化时接收**基础配置**和**输出器配置列表**构成的对象，即：```{ id, env, level, params, loggers }```。
+通常，实例化**LoggerCore**需要使用由**LoggerCore标识ID**、**输出器基础配置**和**输出器配置列表**构成的配置对象，即：```{ id, env, level, params, loggers }```。
 
-- ```id```：LoggerCore的唯一标识，默认值为``` `LoggerCore_${generateRandomString(6, 'uln')}` ```。
-- ```env```：LoggerCore的运行环境，默认值为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
+- ```id```：**LoggerCore**的唯一标识，默认值为``` `LoggerCore_${generateRandomString(6, 'uln')}` ```。
 
-  ::: danger 注意
-  **此配置将作为在```loggers```中对日志输出器进行针对性配置时```env```的默认值：**
+::: tip 提示
+我们可以通过唯一的```id```在应用程序中标识**LoggerCore**实例。
 
-  - 如果没有配置日志输出器的```env```，则使用此配置的值。
-  - 如果配置了日志输出器的```env```，则使用实际配置的值。
+在实际日志收集场景中使用共享的**LoggerCore**实例时可以通过执行```loggerCore.id```对**LoggerCore**实例进行校验和判断。
+:::
+
+- ```env```：**LoggerCore**的运行环境/**日志输出器**的基础运行环境，默认值为```BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```。
+
+  需要注意的是，**运行环境**将影响**LoggerCore**的行为：
+
+  - 当运行环境为```BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，**LoggerCore**创建**日志输出器**实例时将忽略配置对象中指定的**输出器配置列表**。
+
+  - 当运行环境不为```BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，**LoggerCore**创建**日志输出器**实例时将应用配置对象中实际指定的**输出器配置列表**。
+  
+  ::: tip 说明
+  当运行环境为```BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，**LoggerCore**将不再使用配置对象中指定的**输出器配置列表**创建**日志输出器**实例，而是使用一个[基础输出器](/guide/logger-introduce.html#基础输出器)将日志单点输出至控制台，其触发方式为：
+
+  - **构建触发方式**：```init```。
+
+  - **启动触发方式**：```none```。
+
+  - **关闭触发方式**：```none```。
+  :::
+  ---
+
+  另外，此配置将作为在**输出器配置列表**中指定**日志输出器**的```env```的默认值：
+
+  - 未指定**日志输出器**的```env```时，使用此配置。
+
+  - 指定了**日志输出器**的```env```时，使用实际配置。
+
+- ```level```：**日志输出器**的基础最小日志输出等级的名称或别名。
+
+  同样，此配置的默认值依赖于当前**LoggerCore**的**运行环境**：
+
+  - 当运行环境为```BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```all```。
+
+  - 当运行环境不为```BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```error```。
+
+  另外，此配置将作为在**输出器配置列表**中指定**日志输出器**的```level```的默认值：
+
+  - 未指定**日志输出器**的```level```时，使用此配置。
+
+  - 指定了**日志输出器**的```level```时，使用实际配置。
+
+- ```params```：**日志输出器**的基础功能配置参数。
+
+  ::: tip 说明
+  **LoggerCore**在创建**日志输出器**实例时，默认将通过```Object.assign()```将个性化功能配置参数合并至基础功能配置参数中形成最终应用于**日志输出器**实例的功能配置参数。
+
+  我们可以通过修改**LoggerCore**实例的```onBuildLogger```属性进行更改以变更默认的**日志输出器**创建行为，具体将在[运行原理](#运行原理)一节中讨论。
   :::
 
-  运行环境将影响LoggerCore行为：
+- ```loggers```：**日志输出器**的配置列表，其元素结构为：```{ type, buildTrigger, startTrigger, closeTrigger, env, level, params }```。
 
-  - 当运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，**LoggerCore创建输出器实例时将忽略```loggers```配置**，仅创建一个使用```init```方式触发构建的[基础输出器](/guide/logger-introduce.html#基础输出器)。
-  - 当运行环境不为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，LoggerCore将根据实际配置创建日志输出器实例。
-
-- ```level```：最小日志输出等级名称或别名，输出组仅输出权重大于等于此输出等级的日志。
-
-  ::: danger 注意
-  **此配置将作为在```loggers```中对日志输出器进行针对性配置时```level```的默认值：**
-
-  - 如果没有配置日志输出器的```level```，则使用此配置的值。
-  - 如果配置了日志输出器的```level```，则使用实际配置的值。
-  :::
-
-  最小输出等级的默认值依赖于当前运行环境：
-
-  - 当运行环境为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```all```。
-  - 当运行环境不为```Core.Macros.BASE_LOGGER_DEVELOPMENT_ENVIRONMENT```时，默认值为：```error```。
-
-- ```params```：日志输出器的基础功能配置参数。
-
-  ::: danger 注意
-  **LoggerCore默认行为下通过```Object.assign()```将个性化配置合并至此配置得到最终配置创建日志输出器实例**。可以对LoggerCore实例的```onBuildLogger```属性进行更改以变更输出器实例的默认创建行为。
-  :::
-
-- ```loggers```：日志输出器配置列表。日志输出器配置对象结构为：```{ type, buildTrigger, startTrigger, closeTrigger, env, level, params  }```。
-  - ```type```：日志输出器的类型，可以使用Corejs内置输出器或[自定义输出器](/guide/logger-customizing.html)，默认值为```null```。
+  - ```type```：**日志输出器**的类型，可以使用Corejs内置的**日志输出器**或[自定义输出器](/guide/logger-customizing.html)，默认值为```null```。
     
     ::: warning 注意
-    LoggerCore创建输出器时将对日志输出器的类型进行校验，如果设置了未继承自```Core.BaseLogger```的自定义输出器时，将认为类型无效不再创建输出器实例。
+    **LoggerCore**创建**日志输出器**实例时将对使用的```type```进行校验。如果指定了未继承自```Core.BaseLogger```的**自定义输出器**时，将认为**日志输出器**的类型无效，不再执行实际构建动作。
     :::
 
-  - ```buildTrigger```：日志输出器的[构建触发方式](#输出器构建)，默认值为```'init'```。
-  - ```startTrigger```：日志输出器的[启动触发方式](#输出器启动)，默认值为```'none'```。
-  - ```closeTrigger```：日志输出器的[关闭触发方式](#输出器关闭)，默认值为```'none'```。
-  - ```env```：日志输出器的运行环境，默认值为LoggerCore的运行环境。
-  - ```level```：最小日志输出等级名称或别名，默认值为LoggerCore的最小日志输出等级名称或别名。
-  - ```params```：日志输出器的个性化功能配置参数，LoggerCore创建输出器实例时将使用```Object.assign()```将此配置合并至**基础功能配置参数**得到最终配置。
+  - ```buildTrigger```：**日志输出器**的**构建触发方式**，默认值为```'init'```。
 
-### 样例代码
+  - ```startTrigger```：**日志输出器**的**启动触发方式**，默认值为```'none'```。
 
-样例代码中实现了多点日志收集：
+  - ```closeTrigger```：**日志输出器**的**关闭触发方式**，默认值为```'none'```。
 
-- 以秒为周期进行日志收集，归档目录为```./logs/Cycle_1s```：每秒内产生的日志体积超出1K时自动分割，且仅保留最近5秒内的日志。
-- 5秒内产生的日志归档至同一文件，文件路径为```./logs/Duration_5s/_.<%开始时间%>.[FN].log```：仅保留最后2个的归档文件（即：最近10秒内的日志）。
+  ::: tip 提示
+  关于**日志输出器**的行为触发方式，我们可以参考[行为控制](#行为控制)一节。
+  :::
+
+  - ```env```：**日志输出器**的**运行环境**，默认值为**LoggerCore**的**运行环境**。
+
+  - ```level```：**日志输出器**最小日志输出等级的名称或别名，默认值为**LoggerCore**的最小日志输出等级名称或别名。
+
+  - ```params```：**日志输出器**的功能配置参数。
+
+  ::: tip 提示
+  关于**日志输出器**的**运行环境**、**最小输出等级**和**功能配置参数**，我们可以参考**日志输出器**的[功能配置](/guide/logger-introduce.html#输出器配置)一节。
+  :::
+
+### 运行原理
+
+我们已经知道，**LoggerCore**实例将在执行```createGroupLogger()```时创建**日志输出组**实例并向其中植入**日志输出器实例列表**。于是，小朋友你是否有很多问号：
+
+- **日志输出器**实例如何创建？
+
+- **日志输出器**实例何时创建？
+
+在本节中，我们将围绕这两个问题讨论**LoggerCore**的运行原理。
+
+---
+
+对于**日志输出器实例如何创建**，答案非常简单：**LoggerCore**将迭代**输出器配置列表**中的每个配置对象，调用实例方法```onBuildLogger()```逐个创建**日志输出器**实例。
+
+```onBuildLogger()```接收三个参数用于创建**日志输出器**实例：
+
+- **```type```**：**日志输出器**的类型。
+
+- **```loggerConfigs```**：在**输出器配置列表**中对指定的配置对象。
+
+- **```defaultConfigs```**：在**LoggerCore**中指定的基础配置对象。
+
+举一个🌰，有这样一个**LoggerCore**：
 
 ```javascript
 const Core = require('node-corejs');
@@ -185,67 +201,149 @@ const Core = require('node-corejs');
 const loggerCore = new Core.LoggerCore({
   env: 'prod',
   level: 'infos',
-  // 设置基础属性
-  params: {
-    sourcePath: './logs',
-    filePrefixAsSourcePath: true,
-    filePrefixAsFileName: false,
-    dateFormat: 'YYYY-MM-DD_HH:mm:ss',
-    keepDateNum: 2,
-    keepFileExt: true,
-  },
-  // 设置输出器配置列表
+  params: { sourcePath: './testlogs' },
   loggers: [{
-    // 日期输出器
-    type: Core.DateLogger,
-    buildTrigger: 'init', // 使每个输出组实例共享日期输出器
-    startTrigger: 'none',
-    closeTrigger: 'none',
-    params: {
-      filePrefix: 'Cycle_1s',
-      keepDateNum: 5,
-      maxSize: 1024,
-    },
-  }, {
-    // 文件输出器配置
     type: Core.FileLogger,
-    buildTrigger: 'create', // 使每个输出组实例独享文件输出器
-    startTrigger: 'none',
-    closeTrigger: 'none',
-    params: {
-      filePrefix: 'Duration_5s',
-      fileName: '_',
-      auto: true,
-      timeout: 5000,
-      dateAsSourcePath: false,
-      dateAsFileName: true,
-    },
+    buildTrigger: 'create',
+    startTrigger: 'normal',
+    closeTrigger: 'normal',
+    level: 'error',
+    params: { auto: false, filePrefix: 'FileLogger_1' }
   }],
 });
 
-let count = 0;
+```
 
-setInterval(() => {
-  // 创建并启动输出组
-  const logger = loggerCore.createLogger();
-  logger.start();
+那么，**LoggerCore**使用```onBuildLogger()```创建**日志输出器**实例时带入的参数为：
 
-  for (let i = 0; i < 5; i++) {
-    // 执行日志输出
-    setTimeout(() => {
-      for (let j = 0; j < 10; j++) {
-        count += 1;
-        logger.log(new Error(`GroupLogger测试输出 -> ${count}`));
-      }
-    }, i * 1000);
-    // 日志输出完成后关闭输出组
-    if (i == 4) {
-      setTimeout(() => {
-        logger.close();
-      }, 4500);
+```javascript
+type = Core.FileLogger;
+
+loggerConfigs = { level: 'error', params: { auto: false, filePrefix: 'FileLogger_1' } };
+
+defaultConfigs = { env: 'prod', level: 'infos', params: { sourcePath: './testlogs' } };
+```
+
+接下来，让我们来看一看```onBuildLogger()```的默认实现：
+
+```javascript
+onBuildLogger(type, loggerConfigs, defaultConfigs) {
+  // 将个性化功能配置应用基础功能配置
+  const params = Object.assign({}, defaultConfigs.params, loggerConfigs.params);
+  // 将个性化配置应用基础配置并合并功能配置
+  const configs = Object.assign({}, defaultConfigs, loggerConfigs, { params });
+  // 执行输出器的实例化
+  return new type(configs);
+}
+```
+
+因此，我们可以通过修改**LoggerCore**实例的```onBuildLogger```属性进行更改以变更默认的**日志输出器**创建行为。
+
+```javascript
+const Core = require('node-corejs');
+const loggerCore = new Core.LoggerCore();
+// 必须在createGroupLogger()前修改onBuildLogger()
+loggerCore.onBuildLogger = (type, loggerConfigs, defaultConfigs) => new type(loggerConfigs);
+// 此时获取到的日志输出组不再应用基础配置
+const logger = loggerCore.createGroupLogger();
+```
+
+---
+
+对于**日志输出器实例何时创建**，**LoggerCore**将根据在**输出器配置列表**中指定的**构建触发方式**决定创建**日志输出器**实例的时间点。
+
+#### 实例化阶段
+
+1. **LoggerCore**根据**输出器配置列表**中每个配置对象的**构建触发方式**进行分类。
+
+2. **LoggerCore**提取分类结果中使用```init```方式触发构建的配置对象，并使用```onBuildLogger()```创建对应的**日志输出器**实例存储在实例属性```_baseLoggerObjects```中。
+
+#### 执行```createLogger()```时
+
+1. **LoggerCore**提取分类结果中使用```create```方式触发构建的配置对象，并使用```onBuildLogger()```创建对应的**日志输出器**实例。
+
+2. 连接**LoggerCore**实例属性```_baseLoggerObjects```中存储的**日志输出器**实例和①中创建的**日志输出器**实例组成待植入**日志输出组**实例的**日志输出器实例列表**。
+
+3. **LoggerCore**根据```createLogger()```传入的**日志输出组类型**和**自定义输出组功能配置参数**，创建对应的**日志输出组**实例并向其植入②中得到的**日志输出器实例列表**。
+
+### 使用场景
+
+接下来，我们使用**LoggerCore**实现一个复杂的组合日志输出场景：
+
+**目标1**：
+
+- 保留最近5个归档日期内的日志。
+
+- 将每秒内产生的日志归档至同一**日志文件**，超出```1KB```时自动分割。
+
+- **日志文件**按照**归档前缀**存储，且**日志文件名**中不展示**归档前缀**。
+
+**目标2**：
+
+- 保留最近10秒内的日志。
+
+- **日志文件名**中展示**归档时间**，但不展示**归档前缀**。
+
+- **日志文件**按照**归档前缀**存储，并将每5秒内产生的**日志文件**归档至同一文件。
+
+```javascript
+const Core = require('node-corejs');
+
+// 创建LoggerCore
+const loggerCore = new Core.LoggerCore({
+  env: 'prod',
+  level: 'infos',
+  params: {
+    // 指定统一的归档源目录
+    sourcePath: './testlogs',
+  },
+  loggers: [{
+    // 使用共享的日期输出器实现目标1
+    type: Core.DateLogger,
+    buildTrigger: 'init',                // 在LoggerCore实例化时创建日期输出器
+    startTrigger: 'none',                // 日期输出器自动启动,LoggerCore无需控制其启动动作
+    closeTrigger: 'none',
+    params: {
+      filePrefix: 'Cycle_1s',            // 归档前缀
+      keepDateNum: 5,                    // 保留最近5个归档日期
+      maxSize: 1024,                     // 最大日志文件体积为1K
+      dateFormat: 'YYYY-MM-DD_HH_mm_ss', // 以秒作为归档周期
+      filePrefixAsFileName: false,       // 日志文件名不附加归档前缀
+      filePrefixAsSourcePath: true,      // 在归档源目录中创建归档前缀目录
     }
-  }
-}, 5000);
+  }, {
+    // 使用非共享的文件输出器实现目标2
+    type: Core.FileLogger,
+    buildTrigger: 'create',              // 在执行createGroupLogger()时创建新的文件输出器
+    startTrigger: 'none',                // 文件输出器自动启动,LoggerCore无需控制其启动动作
+    closeTrigger: 'none',                // 文件输出器自动关闭,LoggerCore无需控制其关闭动作
+    params: {
+      filePrefix: 'Duration_5s',         // 归档前缀
+      keepDateNum: 2,                    // 保留最近2个归档日期，2*5=10秒
+      fileName: '_',                     // 归档文件名
+      filePrefixAsFileName: false,       // 日志文件名不附加归档前缀
+      filePrefixAsSourcePath: true,      // 在归档源目录中创建归档前缀目录
+      dateFormat: 'YYYY-MM-DD_HH_mm_ss', // 以秒作为归档周期
+      dateAsFileName: true,              // 日志文件名附加归档日期
+      dateAsSourcePath: false,           // 不使用归档日期分类日志文件
+    }
+  }],
+});
+
+let logger = null;
+// 每五秒创建新的日志输出组
+function refreshLogger() {
+  logger && logger.close();
+  logger = loggerCore.createGroupLogger();
+  logger.start();
+}
+refreshLogger();
+setInterval(() => refreshLogger(), 5000);
+
+// 每100ms输出一次日志
+setInterval(() => {
+  logger.log(new Error('一个🌰日志'));
+}, 100);
 ```
 
 ## 基础输出组
