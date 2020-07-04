@@ -1031,6 +1031,29 @@ logger.log('一条🌰日志');
   **归档文件名**不是最终输出至文件系统的**日志文件名**，而是作为**日志文件名**的构成元素。
   :::
 
+  ---
+
+  我们可能会遇到**归档文件名**由业务自定义部分和随机字符串部分共同组成的场景。此时，可以使用宏字符串```[%RANDOM_FILE_NAME%]```，**文件输出器**将在构造**日志文件名**时将使用```_generateFileName()```的执行结果替换```[%RANDOM_FILE_NAME%]```：
+
+  ```javascript
+  const Core = require('node-corejs');
+
+  setInterval(() => {
+    const logger = new Core.FileLogger({
+      env: 'prod',
+      level: 'infos',
+      params: {
+        sourcePath: './testlogs',
+        // 在fileName中使用宏字符串
+        fileName: 'LogFile_[%RANDOM_FILE_NAME%]'
+      }
+    });
+
+    // 日志输出文件名为LogFile_[%随机字符串%].log
+    logger.log('一个🌰日志');
+  }, 500);
+  ```
+
 - #### ```filePrefix```
 
   设置此配置将指定**文件输出器**的**归档前缀**，默认值为```''```。
