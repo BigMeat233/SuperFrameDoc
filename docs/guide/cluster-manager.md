@@ -745,6 +745,60 @@ Core.ClusterCore.start();
     > 对空数组使用```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_POP```指令，也将得到```undefined```。
   :::
 
+##### 使用样例
+
+接下来，让我们来看一个使用```setGlobalObject()```设置**全局对象**的🌰：
+
+```javascript
+const Core = require('node-corejs');
+
+class AppMain extends Core.AppMain {
+  /**
+   * 进程初始化完成
+   * @override
+   */
+  onProcessDidInit(processId, launchParams) {
+    super.onProcessDidInit(processId, launchParams);
+    // 主进程中创建键名为processDetail.M的field存储其进程pid
+    if (processId === 'M') {
+      // 首先创建键名processDetail指向的field
+      Core.ClusterCore.setGlobalObject('processDetail', {}, (err) => {
+        if (err) {
+          return;
+        }
+        // 在创建首层field成功后写入主进程的pid并派生子进程
+        Core.ClusterCore.setGlobalObject(['processDetail', 'M'], process.pid);
+        Core.ClusterCore.fork(4);
+      });
+    }
+    // 子进程中创建键名为processDetail.[进程偏移]的field存储其进程pid
+    else {
+      const processOffset = processId.split(':').pop();
+      Core.ClusterCore.setGlobalObject(['processDetail', processOffset], process.pid);
+    }
+  }
+}
+
+// 使用AppMain初始化ClusterCore并启动
+Core.ClusterCore.init(AppMain);
+Core.ClusterCore.start();
+```
+
+---
+
+我们可以在```onProcessDidInit()```中使用```getGlobalObject()```检查设置**全局对象**的成果：
+
+```javascript
+// 查看全局对象的设置结果
+setTimeout(() => {
+  const fieldName = processId === 'M' ? 'M' : processId.split(':').pop();
+  const keyPath = ['processDetail', fieldName];
+  Core.ClusterCore.getGlobalObject(keyPath, (err, value) => {
+    !err && console.log(`进程[${fieldName}]的PID -> ${value}`);
+  });
+}, 1000);
+```
+
 #### 数组指令
 
 在```setGlobalObject()```时，如果指定的**键路径**对应了**全局对象**中的值为```Array```类型，我们可以在**键路径**中追加以下**数组指令**以快捷实现数组变异操作：
@@ -759,6 +813,66 @@ Core.ClusterCore.start();
 | ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_UNSHIFT```    | 向数组头部添加新元素，即执行```unshift()```  |
 | ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_REVERSE```    | 数组翻转，即执行```reverse()```            |
 | ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_COPYWITHIN``` | 数组内部替换，即执行```copywhthin()```      |
+
+##### 使用样例
+
+接下来，让我们来看一个在```setGlobalObject()```使用**数组指令**设置**全局对象**的🌰：
+
+```javascript
+const Core = require('node-corejs');
+
+class AppMain extends Core.AppMain {
+  /**
+   * 进程初始化完成
+   * @override
+   */
+  onProcessDidInit(processId, launchParams) {
+    super.onProcessDidInit(processId, launchParams);
+    // 在主进程中创建键名为processDetail的field,并推入主进程信息
+    if (processId === 'M') {
+      // 首先创建键名processDetail指向的field
+      Core.ClusterCore.setGlobalObject('processDetail', [], (err) => {
+        if (err) {
+          return;
+        }
+        // 在创建首层field成功后推入主进程信息并派生子进程
+        Core.ClusterCore.setGlobalObject(
+          ['processDetail', Core.Macros.CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_PUSH],
+          { processId, processPid: process.pid }
+        );
+        Core.ClusterCore.fork(4);
+      });
+    }
+    // 子进程中将子进程信息推入processDetail指向的field
+    else {
+      Core.ClusterCore.setGlobalObject(
+        ['processDetail', Core.Macros.CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_PUSH],
+        { processId, processPid: process.pid }
+      );
+    }
+  }
+}
+
+// 使用AppMain初始化ClusterCore并启动
+Core.ClusterCore.init(AppMain);
+Core.ClusterCore.start();
+```
+
+---
+
+同样，我们可以在```onProcessDidInit()```中使用```getGlobalObject()```检查设置**全局对象**的成果：
+
+```javascript
+// 查看全局对象的设置结果
+setTimeout(() => {
+  Core.ClusterCore.getGlobalObject((err, value) => {
+    if (err) {
+      return;
+    }
+    console.log(`当前应用程序中的全局对象为 -> ${JSON.stringify(value)}`);
+  });
+}, 1000);
+```
 
 #### ```removeGlobalObject()```
 
@@ -783,6 +897,58 @@ Core.ClusterCore.start();
 
   - ```error```：**全局对象**移除操作执行失败的原因，为```null```时表示操作执行成功。
   - ```globalObject```：执行移除操作后的**全局对象**，当操作执行失败时为```undefined```。
+
+
+##### 使用样例
+
+让我们基于设置**全局对象**的样例，来使用```removeGlobalObject()```删除**全局对象**中指定的```field```：
+
+```javascript {22-32}
+const Core = require('node-corejs');
+
+class AppMain extends Core.AppMain {
+  /**
+   * 进程初始化完成
+   * @override
+   */
+  onProcessDidInit(processId, launchParams) {
+    super.onProcessDidInit(processId, launchParams);
+    // 主进程中创建键名为processDetail.M的field存储其进程pid
+    if (processId === 'M') {
+      // 首先创建键名processDetail指向的field
+      Core.ClusterCore.setGlobalObject('processDetail', {}, (err) => {
+        if (err) {
+          return;
+        }
+        // 在创建首层field成功后写入主进程的pid并派生子进程
+        Core.ClusterCore.setGlobalObject(['processDetail', 'M'], process.pid);
+        Core.ClusterCore.fork(4);
+      });
+
+      // 尝试删除全局对象中的field
+      setTimeout(()=>{
+        // 移除processDetail.M指向的field
+        Core.ClusterCore.removeGlobalObject(['processDetail', 'M'], (err, globalObject) => {
+          !err && console.log(`移除processDetail.M后的全局对象 -> ${JSON.stringify(globalObject)}`);
+        });
+        // 移除processDetail指向的field
+        Core.ClusterCore.removeGlobalObject('processDetail', (err, globalObject) => {
+          !err && console.log(`移除processDetail后的全局对象 -> ${JSON.stringify(globalObject)}`);
+        });
+      }, 1000);
+    }
+    // 子进程中创建键名为processDetail.[进程偏移]的field存储其进程pid
+    else {
+      const processOffset = processId.split(':').pop();
+      Core.ClusterCore.setGlobalObject(['processDetail', processOffset], process.pid);
+    }
+  }
+}
+
+// 使用AppMain初始化ClusterCore并启动
+Core.ClusterCore.init(AppMain);
+Core.ClusterCore.start();
+```
 
 ### 数据一致性
 
@@ -844,6 +1010,72 @@ Core.ClusterCore.start();
   出于性能考虑，在检测到没有指定```calllBack```时将直接退出，不再触发实际读取逻辑。
   :::
 
+##### 使用样例
+
+让我们基于使用**数组指令**设置全局对象的样例，来演示如何使用```queryGlobalObject()```自定义读取**全局对象**：
+
+```javascript {33-53}
+const Core = require('node-corejs');
+
+class AppMain extends Core.AppMain {
+  /**
+   * 进程初始化完成
+   * @override
+   */
+  onProcessDidInit(processId, launchParams) {
+    super.onProcessDidInit(processId, launchParams);
+    // 在主进程中创建键名为processDetail的field,并推入主进程信息
+    if (processId === 'M') {
+      // 首先创建键名processDetail指向的field
+      Core.ClusterCore.setGlobalObject('processDetail', [], (err) => {
+        if (err) {
+          return;
+        }
+        // 在创建首层field成功后推入主进程信息并派生子进程
+        Core.ClusterCore.setGlobalObject(
+          ['processDetail', Core.Macros.CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_PUSH],
+          { processId, processPid: process.pid }
+        );
+        Core.ClusterCore.fork(4);
+      });
+    }
+    // 子进程中将子进程信息推入processDetail指向的field
+    else {
+      Core.ClusterCore.setGlobalObject(
+        ['processDetail', Core.Macros.CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_PUSH],
+        { processId, processPid: process.pid }
+      );
+    }
+
+    // 自定义读取全局对象
+    setTimeout(() => {
+      // 定义读取规则中依赖的外部变量为资源上下文
+      const context = { processId };
+      Core.ClusterCore.queryGlobalObject(
+        // 设置外部资源上下文
+        context,
+        // 设置自定义读取规则
+        (globalObject, context) => {
+          const { processId } = context;
+          const { processDetail } = globalObject;
+          return processDetail.find((detail) => detail.processId === processId);
+        },
+        // 处理读取结果
+        (err, value) => {
+          if (err) {
+            return;
+          }
+          console.log(`当前进程的信息 -> ${JSON.stringify(value)}`);
+        });
+    }, 1000);
+  }
+}
+
+// 使用AppMain初始化ClusterCore并启动
+Core.ClusterCore.init(AppMain);
+Core.ClusterCore.start();
+```
+
 #### ```updateGlobalObject()```
 
 ##### 使用说明
@@ -875,3 +1107,86 @@ Core.ClusterCore.start();
 
   - ```error```：自定义更新**全局对象**失败的原因，为```null```时表示更新动作执行成功。
   - ```globalObject```：自定义更新操作执行成功后的**全局对象**，当操作执行失败时为```undefined```。
+
+##### 使用样例
+
+接下来，让我们借助**全局对象**来实现一个在进程组中竞争资源的Demo：
+
+```javascript
+const Core = require('node-corejs');
+
+class AppMain extends Core.AppMain {
+  /**
+   * 进程初始化完成
+   * @override
+   */
+  onProcessDidInit(processId, launchParams) {
+    super.onProcessDidInit(processId, launchParams);
+    // 在主进程中设置资源总数为9
+    // 创建8个Worker进程对资源进行竞争
+    if (processId === 'M') {
+      Core.ClusterCore.setGlobalObject('totalCount', 9, (err) => {
+        if (err) {
+          return;
+        }
+        Core.ClusterCore.fork(8);
+      });
+    }
+    // 在子进程中竞争资源,并关闭未获得资源的进程
+    // 偏移为奇数的进程占用1个资源
+    // 偏移为偶数的进程占用2个资源
+    else {
+      // 计算进程偏移并定义更新规则依赖的资源上下文
+      const processOffset = parseInt(processId.split(':').pop());
+      const context = { processOffset };
+      Core.ClusterCore.updateGlobalObject(
+        // 设置外部资源上下文
+        context,
+        // 设置自定义更新规则
+        (globalObject, context) => {
+          let { totalCount } = globalObject;
+          const { processOffset } = context;
+
+          // 根据进程偏移尝试对资源进行预占位
+          if (processOffset % 2) {
+            totalCount -= 1;
+          } else {
+            totalCount -= 2;
+          }
+
+          // 当资源不足时抛出异常,不改变全局对象
+          if (totalCount < 0) {
+            throw new Error('资源不足');
+          }
+          // 资源预占位成功时更新全局对象扣除对应的资源
+          else {
+            return {
+              ...globalObject,
+              totalCount,
+            };
+          }
+        },
+        // 处理更新结果
+        (err, globalObject) => {
+          // 当更新全局对象失败时说明竞争资源失败,退出进程
+          err && process.exit();
+          console.log(`进程[${processId}]获取资源成功，当前剩余资源 -> ${globalObject.totalCount}`);
+        }
+      )
+    }
+  }
+
+  /**
+   * Worker进程退出
+   * @override
+   */
+  onWorkerProcessDidExit(exitedProcessId, exitedDetail, reboot) {
+    console.log(`进程[${exitedProcessId}]因未获取到资源退出`);
+  }
+
+}
+
+// 使用AppMain初始化ClusterCore并启动
+Core.ClusterCore.init(AppMain);
+Core.ClusterCore.start();
+```
