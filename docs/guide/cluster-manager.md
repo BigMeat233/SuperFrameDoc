@@ -6,7 +6,7 @@
 
 - **Worker进程**：处理实际业务。
 
-在多进程架构的应用程序中，**Master进程**中的执行的操作具有应用程序级别的唯一性，而在不同的进程拥有完全独立的内存空间，进程内的状态完全隔离。因此，对于在多个**Worker进程**中共享的状态的场景，我们可以使用Corejs提供的[全局对象](#全局对象)实现。
+在多进程架构的应用程序中，**Master进程**中执行的操作具有应用程序级别的唯一性；而不同的进程拥有完全独立的内存空间，进程内的状态完全隔离。因此，对于在多个**Worker进程**中共享的状态的场景，我们可以使用Corejs提供的[全局对象](#全局对象)实现。
 
 ::: warning 注意
 在多**Worker进程**的应用程序中，每个**Worker进程**需要严格保证无状态设计，否则可能产生奇怪的问题。
@@ -21,7 +21,7 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 - **AppMain**：实现应用程序生命周期的各个阶段，将被**ClusterCore**加载和调用。
 
 ::: tip 提示
-通常，我们应该把应用程序的业务逻辑应全部装入**AppMain**，在**AppMain**外部只需要：
+通常，我们应将应用程序的业务逻辑全部装入**AppMain**，在**AppMain**外部只需要：
 
 1. 执行```Core.ClusterCore.init()```指定应用程序使用的**AppMain**。
 
@@ -48,13 +48,15 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 
 - [```onProcessDidDiscardMessage(fromProcessId, data)```](#onprocessdiddiscardmessage)：**Master/Worker进程**决定丢弃进程间通信消息时触发。
 
+- [```onProcessTraceMessageTimeout(toProcessId, data)```](#onprocesstracemessagetimeout)：**Master/Worker进程**中需要应答的进程间通信超时未接收到应答消息时触发。
+
 ::: tip 提示
 我们在实现**AppMain**时，需要继承自```Core.AppMain```。
 :::
 
 ### 实例属性
 
-[ClusterCore](#clustercore)在初始化过程中自动创建**AppMain**实例。因此，在应用程序的任意生命周期中，可以直接使用```this```访问**AppMain**的实例属性：
+[ClusterCore](#clustercore)执行初始化时将自动创建**AppMain**实例。因此，在应用程序的任意生命周期中，可以直接使用```this```访问**AppMain**的实例属性：
 
 - ```processId```：当前进程的ID。
 
@@ -65,17 +67,17 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 
   - **Worker进程**中，进程ID为```'W:<%进程偏移%>'```。
   
-  进程偏移反映了**Master进程**创建**Worker进程**的时序，为```>= 1```的整数。
+  **进程偏移**是一个```>= 1```的整数，反映了**Master进程**创建**Worker进程**的时序。
   :::
 
-- ```clusterCore```：创建并加载**AppMain**实例的[ClusterCore](#clustercore)实例。
+- ```clusterCore```：创建并加载**AppMain**的[ClusterCore](#clustercore)实例。
 
 - ```launchParams```：进程的初始化参数，即**Master进程**中的```process.argv```。
 
 ::: danger 注意
-只有在```onProcessDidInit()```的```super```操作执行结束后，才可以对**AppMain**中内置的实例属性进行访问。
+**AppMain的实例属性将在```onProcessDidInit()```的默认行为中被设置。**
 
-因此，我们在重写```onProcessDidInit()```必须执行```super```操作，以保证**AppMain**中实例属性的正确性。
+因此，我们在重写```onProcessDidInit()```时必须执行```super```操作，以保证**AppMain**中实例属性的正确性。
 :::
 
 ### 进程生命周期
@@ -86,11 +88,13 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 
 - **Master进程**检测到有**Worker进程**退出时。
 
-我们可以在**Master进程**中使用```process.on()```以捕获**Master进程**的退出事件。
+::: tip 提示
+对于**Master进程**的退出事件，我们可以**Master进程**的业务层中使用```process.on()```。
+:::
 
 #### ```onProcessDidInit()```
 
-**Master进程**、**Worker进程**初始化完成时将触发此方法。通常，我们在此方法中根据```processId```判断当前的进程环境执行不同的逻辑：
+**Master进程**、**Worker进程**初始化完成时将触发此生命周期方法。通常，我们在此方法中根据```processId```判断当前的进程环境执行不同的逻辑：
 
 - 当前是**Master进程**时，使用```Core.ClusterCore.fork()```创建**Worker进程**，或执行一些在期望在应用程序维度保证唯一性的操作。
 
@@ -102,17 +106,17 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 
 #### ```onWorkerProcessDidExit()```
 
-**Master进程**检测到有**Worker进程**退出时将触发此方法。我们在此方法中有两种重新拉起**Worker进程**的方式：
+**Master进程**检测到进程组中有**Worker进程**退出时将触发此生命周期方法。我们在此方法中有两种重新拉起**Worker进程**的方式：
 
 - 使用```reboot()```：新的**Worker进程**将复用退出进程的```processId```。
 
-- 使用```Core.ClusterCore.fork()```：新的**Worker进程**将使用实际的进程偏移创建```processId```。
+- 使用```Core.ClusterCore.fork()```：新的**Worker进程**将使用进程组内的进程偏移创建```processId```。
 
 #### 实现原理
 
 在**Master进程**中，执行```Core.ClusterCore.start()```将触发**Master进程**的初始化动作：
 
-1. 首先，使用nodejs原生模块```cluster```监听**Worker进程**的退出消息，在**Worker进程**退出时调用```onWorkerProcessDidExit()```通知业务层处理。
+1. 首先，使用nodejs原生模块```cluster```监听**Worker进程**的退出消息，在**Worker进程**退出时调用```onWorkerProcessDidExit()```通知业务层。
 
 2. 接下来，使用同样方式监听**Worker进程**的通信消息。
 
@@ -124,23 +128,15 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 
 1. 首先，使用```process.on()```监听来自**Master进程**的通信消息。
 
-2. 接下来，向**Master进程**发起[TraceIPC](#traceipc)以获取初始化信息。
+2. 接下来，向**Master进程**发起[TraceIPC](#traceipc)以获取进程的初始化信息。
 
 3. 最后，在收到**Master进程**应答的初始化信息时调用```onProcessDidInit()```通知业务层**Worker进程**已初始化完成。
 
-::: tip 说明
-当**Master进程**和**Worker进程**收到了进程间通信消息时，**ClusterCore**将对消息进行分类过滤处理：
-
-- 对于**自定义通信消息**，**ClusterCore**将直接引导其进入**AppMain**中进行[消息处理](#消息处理)。
-
-- 对于**内部通信消息**，**ClusterCore**将仅执行内部处理，不再引导其进入**AppMain**中进行[消息处理](#消息处理)。
-:::
-
 ## ClusterCore
 
-**ClusterCore**被设计为进程级别单例，在实例化时自动根据当前运行进程的类型加载对应的API。即使在不同的进程环境中，相同的API在使用体验上完全相同。因此，我们在使用**ClusterCore**时通常无需关注进程类型。
+在设计上，**ClusterCore**是进程级别的单例，在实例化时将自动根据当前运行进程的类型加载对应的API。即使在不同的进程环境中，相同的API在使用体验上完全相同。因此，我们在使用**ClusterCore**时通常无需关注进程类型。
 
-需要注意的是，运行在**Master进程**中的**ClusterCore**拥有**创建Worker进程**和**关闭应用程序**的能力。即运行在**Worker进程**中的**ClusterCore**无法调用以下两个API：
+需要注意的是，运行在**Master进程**中的**ClusterCore**拥有**创建Worker进程**和**关闭应用程序**的能力。即运行在**Worker进程**中的**ClusterCore**无法调用以下API：
 
 - ```fork(workerNum)```：创建指定数量的**Worker进程**。
 
@@ -148,7 +144,7 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 
 ---
 
-我们已经知道，**ClusterCore**自动调用**AppMain**中对应生命周期方法以驱动应用程序的运行。因此，在使用**ClusterCore**前需要指定**AppMain**进行初始化。
+我们已经知道，**ClusterCore**将自动调用**AppMain**中对应生命周期方法以驱动应用程序的运行。因此，在使用**ClusterCore**前需要指定**AppMain**进行初始化。
 
 接下来，让我们来看一个使用**ClusterCore**和**AppMain**的标准样例：
 
@@ -201,15 +197,19 @@ Core.ClusterCore.start();
 
 1. **发送方**向**接收方**单向发送消息，无需关注**接收方**的应答情况，即发起[IPC](#ipc)。
 
-2. **发送方**向**接收方**发送消息后，需要收到**接收方**应答后才认为通信完成，即发起[TraceIPC](#traceipc)。
+2. **发送方**向**接收方**发送消息后，需要接收到**接收方**的应答消息后才认为通信完成，即发起[TraceIPC](#traceipc)。
 
 ### API设计
 
-**ClusterCore**提供了在进程组任意进程间发起[IPC](#ipc)或[TraceIPC](#traceipc)的API：
+**ClusterCore**提供了在进程组中的任意进程间发起[IPC](#ipc)和[TraceIPC](#traceipc)的API：
 
-- [```sendData(processId, data[, callBack])```](#senddata)：用于发起[IPC](#ipc)、[应答TraceIPC](#应答traceipc)。
+- [```sendData(processId, data[, callBack])```](#senddata)：用于发起[IPC](#ipc)。
 
-- [```sendDataWithTraceCallBack(processId, data, traceCallBack[, callBack])```](#senddatawithtracecallback)：用于[发起TraceIPC](#发起traceipc)。
+- [```sendDataWithTraceCallBack(processId, data, options[, callBack])```](#senddatawithtracecallback)：用于发起[TraceIPC](#traceipc)。
+
+::: danger 注意
+**ClusterCore将拒绝在相同的进程间发起的通信动作。**
+:::
 
 ---
 
@@ -217,17 +217,26 @@ Core.ClusterCore.start();
 
 ##### 使用场景
 
-- 在**发送方**调用时，用于向**接收方**发送单向进程间通信消息，即发起[IPC](#ipc)。
-
-- 在**接收方**调用时，用于向**发送方**发送应答消息，即[应答TraceIPC](#应答traceipc)。
+用于**发送方**向**接收方**发送单向的进程间通信消息，即发起[IPC](#ipc)。
 
 ##### 参数列表
 
-- ```processId```：**接收方**的进程ID，必填项。我们可以通过```Core.ClusterCore.getAllProcessIds()```获取进程组中的所有进程ID。
+- ```processId```：**接收方**的进程ID，必填项。
+  
+  ::: tip 提示
+  我们可以使用```Core.ClusterCore.getAllProcessIds()```获取进程组中的所有进程ID。
+  :::
 
-- ```data```：进程间通信的消息，必填项。我们将在[消息结构](#消息结构)一节中具体讨论消息结构的细节。
+- ```data```：**发送方**向**接收方**发送的自定义数据，必填项。我们将在[消息结构](#消息结构)一节中讨论具体细节。
 
-- ```callBack```：进程间通信的执行结果，非必填项。是一个cps风格的```Function```，其参数列表为```(error)```。
+- ```callBack```：发起进程间通信动作的执行结果，非必填项。是一个cps风格的```Function```，其参数列表为```(error)```。
+  
+  ::: tip 提示
+  我们可以根据```callBack```回调的```error```判断进程间通信是否执行成功：
+
+  - 当执行成功时，```error```的值为```null```。
+  - 当执行失败时，```error```的值为通信失败的原因。
+  :::
 
 ---
 
@@ -235,34 +244,105 @@ Core.ClusterCore.start();
 
 ##### 使用场景
 
-**发送方**向**接收方**发送需要应答的进程间通信消息，即[发起TraceIPC](#发起traceipc)。
+**发送方**向**接收方**发送需要应答的进程间通信消息，即发起[TraceIPC](#traceipc)。
 
 ##### 参数列表
 
-- ```processId```：**接收方**的进程ID，必填项。我们可以通过```Core.ClusterCore.getAllProcessIds()```获取进程组中的所有进程ID。
+- ```processId```：**接收方**的进程ID，必填项。
 
-- ```data```：进程间通信时传输的消息，必填项。我们将在[消息结构](#消息结构)一节中具体讨论消息的细节。
+  ::: tip 提示
+  我们可以使用```Core.ClusterCore.getAllProcessIds()```获取进程组中的所有进程ID。
+  :::
 
-- ```traceCallBack```：**发送方**收到应答消息时执行的回调，必填项。其参数列表为```(resData)```。
+- ```data```：**发送方**向**接收方**发送的自定义数据，必填项。我们将在[消息结构](#消息结构)一节中讨论具体细节。
+
+- ```options```：进程间通信的配置项，必填项，支持使用```Object```或```Function```类型的配置项。
+  
+  ::: tip 提示
+  **当我们使用```Object```类型的```options```时，其结构为```{ timeout, traceCallBack }```：**
+
+  - ```timeout```：判定应答超时的毫秒数，默认为```10000```。
+
+    > 在指定时间内未收到来自**接收方**应答消息时，将触发**AppMain**中的```onProcessTraceMessageTimeout()```进行消息超时处理。
+
+  - ```traceCallBack```：**发送方**收到应答消息时执行的回调函数，必填项。其参数列表为```(resData, next)```。
+
+    > 我们可以使用```next()```使应答消息进入**AppMain**中的```onProcessDidReceiveMessage()```继续处理。
+  
+  **当使用```Function```类型的```options```时，将直接应用于```traceCallBack```，且此时```timeout```为```10000```。**
+  :::
 
 - ```callBack```：进程间通信的执行结果，非必填项。是一个cps风格的```Function```，其参数列表为```(error)```。
 
-::: tip 提示
-```sendData()```和```sendDataWithTraceCallBack()```使用```callBack```回调进程间通信的执行结果：
+  ::: tip 提示
+  我们可以根据```callBack```回调的```error```判断进程间通信是否执行成功：
 
-- 通信成功时，```error```的值为```null```。
-
-- 通信失败时，```error```的值为通信失败的原因。
-
-**ClusterCore**将拒绝在相同的进程间发起的通信动作。
-:::
+  - 当执行成功时，```error```的值为```null```。
+  - 当执行失败时，```error```的值为通信失败的原因。
+  :::
 
 ### 消息结构
 
-进程间通信消息是一个```Object```，nodejs将在传输过程中对其进行序列化。
+进程间通信传输的消息将被**ClusterCore**包装为由元数据```meta```和自定义数据```data```构成的```Object```。
 
-::: tip 提示
-为避免序列化对消息的完整性产生影响，我们构造消息结构时应使用基本类型构成的```field```，即：
+元数据```meta```中存储了消息的基本信息，通常不被业务层感知：
+
+- ```traceId```：消息的链路追踪ID。
+
+- ```toProcessId```：**接收方**的进程ID。
+
+- ```fromProcessId```：**发送方**的进程ID。
+
+- ```isRes```：是否为[TraceIPC](#traceipc)的应答消息。
+
+- ```isTransitRes```：是否为转发结果的应答消息。
+
+- ```transitTraceId```：转发结果消息的链路追踪ID。
+
+---
+
+自定义数据```data```由业务层定义，主要用于存储业务功能所需的信息，通常包括**触发动作**和**附属数据**。
+
+我们在进行进程间通信时，必须在自定义数据中指定消息的**触发动作**，即```action```。另外，推荐使用```payload```作为**附属数据**的键名。
+
+通常，进程间通信消息的元数据不向业务层暴露。在以下场景中，**ClusterCore**仅向业务层抛出自定义数据```data```：
+
+- ```onProcessWillReceiveMessage()```中进程收到的进程间通信消息。
+
+- ```onProcessDidReceiveMessage()```中进程决定处理的进程间通信消息。
+
+- ```onProcessDidDiscardMessage()```中进程决定丢弃的进程间通信消息。
+
+- ```onProcessTraceMessageTimeout()```中超时未被应答的进程间通信消息。
+
+- ```sendDataWithTraceCallBack()```中触发```traceCallBack()```时收到的应答消息。
+
+---
+
+我们可以使用```data.getOriginData()```在业务层中取得消息的原始结构以访问元数据，即包含```meta```和```data```的```Object```。
+
+::: tip 说明
+在实现原理上，**ClusterCore**接收到进程间通信的消息时，将对消息结构的原始状态进行Deep Copy生成快照，业务层执行```getOriginData()```时将取得此快照。
+
+因此，在业务层中修改自定义数据```data```并不会影响消息的原始结构。
+:::
+
+另外，业务层中的自定义数据```data```可以使用```getTraceDetail()```获取消息的链路追踪信息，用于应答[TraceIPC](#traceipc)。
+
+执行```data.getTraceDetail()```将得到结构为```{ traceId, responsive, resTrace }```的```Object```，其中：
+
+- ```traceId```：消息的链路追踪ID。
+
+- ```responsive```：消息是否可应答。
+
+- ```resTrace```：消息的快捷应答方法，其参数列表为```(data[, callBack])```。
+
+---
+
+::: danger 注意
+在进行进程间通信时，我们通常仅需指定消息的自定义数据，即```data```。
+
+为避免nodejs在进程间通信过程中自动执行的序列化对消息的完整性产生影响，我们应使用基本类型组成```data```：
 
 - ```Array```
 - ```Object```
@@ -271,54 +351,15 @@ Core.ClusterCore.start();
 - ```Boolean```
 :::
 
----
-
-**ClusterCore**将在发起进程间通信时向消息结构中填充基本信息：
-
-- ```toProcessId```：**接收方**的进程ID。
-- ```fromProcessId```：**发送方**的进程ID。
-
-另外，**ClusterCore**还将在[发起TraceIPC](#发起traceipc)时，向消息结构中填充```traceId```用于追踪和定位整条通信链路。
-
----
-
-对于**Worker进程**之间的通信，将通过**Master进程**进行转发。此类型的进程间通信分为三个阶段：
-
-1. **发送方**向**Master进程**发起**内部TraceIPC**。
-2. **Master进程**尝试转发消息至**接收方**，并向**发送方**应答转发结果。
-3. **发送方**根据向**Master进程**的应答结果和发起**内部TraceIPC**的执行结果向业务层反馈此次进程间通信的结果。
-
-**Worker进程**间也可能[发起TraceIPC](#发起traceipc)。出于逻辑的一致性考虑，**ClusterCore**将在执行步骤①时不再占用```traceId```，而是向消息结构中填充```transitTraceId```用于追踪消息的转发结果。
-
-::: danger 注意
-**ClusterCore将拒绝消息结构中不包含```action```的进程间通信。**
-
-另外，**ClusterCore**可能向消息结构中填充以下```field```：
-
-- ```traceId```
-- ```toProcessId```
-- ```fromProcessId```
-- ```transitTraceId```
-
-在业务层指定这些```field```时拥有更高的优先级，将覆盖**ClusterCore**的填充值，可能导致实际行为与预期不符。因此，我们在发起进程间通信时应谨慎使用这些```field```。
-:::
-
 ### IPC
 
-对于无需关注**接收方**应答的单向进程间通信，使用```Core.ClusterCore.sendData()```直接向目标进程发送消息即可。
-
-::: tip 提示
-在构造进程间通信的消息结构时，附属数据推荐存储在```Object```类型的```payload```中。
-:::
+对于无需关注**接收方**应答的单向进程间通信，使用```sendData()```直接向目标进程发送消息即可。
 
 让我们来看一个单向进程间通信的🌰：
 
 ```javascript
 const Core = require('node-corejs');
 
-/**
- * 实现AppMain
- */
 class AppMain extends Core.AppMain {
   /**
    * 进程初始化完成
@@ -330,7 +371,7 @@ class AppMain extends Core.AppMain {
     if (processId === 'M') {
       Core.ClusterCore.fork(2);
     }
-    // Worker进程 - 使两个Worker进程进行通信
+    // Worker进程 - 在两个Worker进程间进行通信
     else {
       Core.ClusterCore.getAllProcessIds((err, processIds) => {
         if (err || processIds.length !== 3) {
@@ -339,7 +380,9 @@ class AppMain extends Core.AppMain {
         const toProcessId = processIds[1];
         const fromProcessId = processIds[2];
         this.processId === fromProcessId && Core.ClusterCore.sendData(toProcessId, {
+          // 设置消息的触发动作
           action: 'TEST_IPC_ACTION',
+          // 设置消息的附属数据
           payload: { value: '这是一个🌰' }
         });
       });
@@ -351,7 +394,7 @@ class AppMain extends Core.AppMain {
    * @override
    */
   onProcessDidReceiveMessage(fromProcessId, data) {
-    console.log(`进程[${this.processId}]收到了来自进程[${fromProcessId}]的消息:[${JSON.stringify(data)}]`);
+    console.log(`进程[${this.processId}]处理来自进程[${fromProcessId}]的消息:[${JSON.stringify(data)}]`);
   }
 }
 
@@ -371,24 +414,34 @@ Core.ClusterCore.start();
 
 ---
 
-**发送方**使用```Core.ClusterCore.sendDataWithTraceCallBack()```向目标进程发起**TraceIPC**。
+**发送方**使用```sendDataWithTraceCallBack()```向目标进程发起**TraceIPC**。
 
 **ClusterCore**将在**发送方**发起**TraceIPC**时执行三个操作：
 
-1. 自动生成```traceId```填充至消息结构中以追踪**TraceIPC**链路。
-2. 使用步骤①生成的```traceId```在当前进程中注册此次**TraceIPC**收到应答消息时执行的回调。
-3. 当接收到的进程间通信消息中包含已被注册的```traceId```时，将在执行此```traceId```对应的回调后删除注册项。
+1. 生成```traceId```填充至元数据```meta```中以追踪**TraceIPC**链路。
 
-::: tip 说明
-对于```traceId```的组成：
+2. 使用步骤①中生成的```traceId```在当前进程中注册此次**TraceIPC**的追踪信息。
+
+   > 即：消息**接收方**的进程ID和收到应答消息时执行的回调函数```traceCallBack```。
+
+3. 当接收到的消息元数据中包含已被注册的```traceId```且来源方与注册信息匹配时，认为此消息为**TraceIPC**的应答消息。
+
+   > 此时将分发消息进入与```traceId```对应的```traceCallBack```并注销其注册状态。
+
+::: tip 提示
+我们可以在发起**TraceIPC**时指定判定应答超时的时间，当**发送方**在指定时间内未收到来自**接收方**的应答消息时，将自动注销此次**TraceIPC**使用的```traceId```对应的注册信息并触发**AppMain**中的```onProcessTraceMessageTimeout()```以对超时消息进行处理。
+
+另外，在**TraceIPC**超时后，如果收到了应答消息将直接触发**AppMain**中的```onProcessDidDiscardMessage()```进行舍弃处理。
+:::
+
+对于```traceId```的结构：
 
 - 由24位字符组成。
 - 前12位为当前时间戳的16进制表示，位数不足填充```0```。
 - 第13-16位为当前进程PID的16进制表示，位数不足填充```0```。
 - 第16-24位为随机数，位数不足填充```0```。
 
-**ClusterCore**每次生成```traceId```时，将与当前进程中已注册的```traceId```进行冲突检验，以保证进程级别的唯一性。
-:::
+**ClusterCore**每次生成```traceId```时，将与当前进程中已注册的```traceId```进行冲突检验，以保证其进程级别的唯一性。
 
 #### 应答TraceIPC
 
@@ -396,12 +449,14 @@ Core.ClusterCore.start();
 
 **接收方**应答**TraceIPC**时需要进行两个步骤：
 
-1. 使用**发送方**消息中的```traceId```构造应答消息结构。
+1. 执行```getTraceDetail()```取得消息的链路追踪信息。
 
-2. 使用```Core.ClusterCore.sendData()```向**发送方**发送应答消息。
+2. 使用链路追踪信息中提供的```resTrace()```向发送应答消息。
 
 ::: tip 提示
-通常，我们在**接收方**处理进程间通信消息时，使用消息结构中的```action```判断是否需要向**发送方**发送应答消息。
+通常，我们在**接收方**处理进程间通信消息时，使用消息的**触发动作**判断是否需要向**发送方**发送应答消息。
+
+需要注意的是，应答**TraceIPC**时仅允许应答一次，链路追踪信息中的```responsive```表示是否允许进行应答。
 :::
 
 让我们来看一个使用**TraceIPC**的🌰：
@@ -409,9 +464,6 @@ Core.ClusterCore.start();
 ```javascript
 const Core = require('node-corejs');
 
-/**
- * 实现AppMain
- */
 class AppMain extends Core.AppMain {
   /**
    * 进程初始化完成
@@ -423,7 +475,7 @@ class AppMain extends Core.AppMain {
     if (processId === 'M') {
       Core.ClusterCore.fork(2);
     }
-    // Worker进程 - 使两个Worker进程进行通信
+    // Worker进程 - 在两个Worker进程间进行通信
     else {
       Core.ClusterCore.getAllProcessIds((err, processIds) => {
         if (err || processIds.length !== 3) {
@@ -433,10 +485,14 @@ class AppMain extends Core.AppMain {
         const fromProcessId = processIds[2];
         // 发起TraceIPC
         this.processId === fromProcessId && Core.ClusterCore.sendDataWithTraceCallBack(toProcessId, {
+          // 设置消息的触发动作
           action: 'TEST_TRACE_IPC_ACTION',
+          // 设置消息的附属数据
           payload: { value: '这是一个🌰' }
-        }, (resData) => {
+        }, (resData, next) => {
           console.log(`TraceIPC收到了应答消息:[${JSON.stringify(resData)}]`);
+          // 使用next()分发应答消息进入AppMain中的确认处理
+          next();
         });
       });
     }
@@ -447,17 +503,19 @@ class AppMain extends Core.AppMain {
    * @override
    */
   onProcessDidReceiveMessage(fromProcessId, data) {
-    console.log(`进程[${this.processId}]收到了来自进程[${fromProcessId}]的消息:[${JSON.stringify(data)}]`);
-    const { action, traceId, payload } = data;
+    console.log(`进程[${this.processId}]处理来自进程[${fromProcessId}]的消息:[${JSON.stringify(data)}]`);
+    const { action, payload } = data;
+    // 使用action判断是否需要应答
     if (action === 'TEST_TRACE_IPC_ACTION') {
-      // 应答TraceIPC
       const { value } = payload;
+      // 获取链路追踪信息
+      const { responsive, resTrace } = data.getTraceDetail();
+      // 发送应答消息
       const resData = {
-        traceId,
         action: 'TEST_TRACE_IPC_RES_ACTION',
         payload: { value: value + '🌰' }
       };
-      Core.ClusterCore.sendData(fromProcessId, resData);
+      responsive && resTrace(resData);
     }
   }
 }
@@ -473,58 +531,56 @@ Core.ClusterCore.start();
 本章中使用的宏变量存储在```Core.Macros```中。
 :::
 
-当收到进程间通信消息时，**ClusterCore**将根据进程间通信消息结构中的```action```识别**内部通信消息**和**自定义通信消息**：
+在收到进程间通信消息时，**ClusterCore**将根据进程间通信消息自定义数据中的```action```对**内部通信消息**和**自定义通信消息**进行预分类：
 
-- 对于**自定义通信消息**，**ClusterCore**将直接引导其进入**AppMain**中进行**消息处理**。
+- 对于**自定义通信消息**，将直接进入**AppMain**中进行消息处理。
 
-- 对于**内部通信消息**，**ClusterCore**将仅执行内部处理，不再引导其进入**AppMain**中进行**消息处理**。
-
-::: warning 注意
-在**发送方**中收到的**TraceIPC**应答消息也不会进入**AppMain**中的消息处理流程。
-
-因此，我们需要在```traceCallBack```中对这种类型的消息进行处理。
-:::
+- 对于**内部通信消息**，将仅执行内部处理，不再进入**AppMain**中的消息处理流程。
 
 ---
 
-当消息结构中的```action```指定为以下宏变量时，将被**ClusterCore**认为是**内部通信消息**，这些消息不会进入：
+进程间通信消息自定义数据中的```action```指定为以下宏变量时，将被**ClusterCore**认为是**内部通信消息**，此类消息不会进入**AppMain**中的消息处理流程：
 
-| 宏变量                                                               | 描述                                          |
-| :------------------------------------------------------------------ | :------------------------------------------- |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_INITIAL_INFO```     | Worker进程向Master进程发起获取初始化信息          |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_INITIAL_INFO```     | Master进程向Worker进程应答初始化信息             |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_SET_GLOBAL_OBJECT```    | Worker进程向Master进程发起设置全局对象           |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_SET_GLOBAL_OBJECT```    | Master进程向Worker进程应答设置全局对象执行结果     |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_GLOBAL_OBJECT```    | Worker进程向Master进程发起获取全局对象           |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_GLOBAL_OBJECT```    | Master进程向Worker进程应答获取全局对象执行结果     |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_REMOVE_GLOBAL_OBJECT``` | Worker进程向Master进程发起删除全局对象           |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_REMOVE_GLOBAL_OBJECT``` | Master进程向Worker进程应答删除全局对象执行结果     |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_ALL_PROCESS_IDS```  | Worker进程向Master进程发起获取进程组内的所有进程ID |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_ALL_PROCESS_IDS```  | Master进程向Worker进程应答进程组内所有进程ID      |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_TRANSIT_RESULT```       | Master进程向Worker进程应答通信消息转发结果        |
+| 宏变量                                                               | 描述                                           |
+| :------------------------------------------------------------------ | :-------------------------------------------- |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_INITIAL_INFO```     | Worker进程向Master进程发起获取初始化信息           |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_INITIAL_INFO```     | Master进程向Worker进程应答初始化信息              |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_SET_GLOBAL_OBJECT```    | Worker进程向Master进程发起设置全局对象             |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_SET_GLOBAL_OBJECT```    | Master进程向Worker进程应答设置全局对象执行结果      |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_GLOBAL_OBJECT```    | Worker进程向Master进程发起获取全局对象             |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_GLOBAL_OBJECT```    | Master进程向Worker进程应答获取全局对象执行结果      |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_REMOVE_GLOBAL_OBJECT``` | Worker进程向Master进程发起删除全局对象             |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_REMOVE_GLOBAL_OBJECT``` | Master进程向Worker进程应答删除全局对象执行结果      |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_ALL_PROCESS_IDS```  | Worker进程向Master进程发起获取进程组内的所有进程ID  |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_ALL_PROCESS_IDS```  | Master进程向Worker进程应答进程组内所有进程ID       |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_QUERY_GLOBAL_OBJECT```  | Worker进程向Master进程发起自定义读取全局对象        |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_QUERY_GLOBAL_OBJECT```  | Master进程向Worker进程应答自定义读取全局对象执行结果 |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_UPDATE_GLOBAL_OBJECT``` | Worker进程向Master进程发起自定义更新全局对象        |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_UPDATE_GLOBAL_OBJECT``` | Master进程向Worker进程应答自定义更新全局对象执行结果 |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_TRANSIT_RESULT```       | Master进程向Worker进程应答通信消息转发结果         |
 
 ---
 
-我们可以在实现**AppMain**时，重写消息处理的相关生命周期方法以定制进程间通信消息的处理流程：
+我们可以重写**AppMain**中消息处理相关的生命周期方法，以定制进程间通信消息的处理流程：
 
 #### ```onProcessWillReceiveMessage()```
 
 ##### 触发场景
 
-当前进程接收到进程间通信消息时触发此生命周期方法。
+当前进程接收到**自定义通信消息**时触发此生命周期方法。
 
-##### 使用方法
+##### 使用方式
 
-通常，我们在此方法中使用流程控制函数```next()```对进程间通信消息进行过滤：
+通常，我们在此生命周期方法中对进程间通信消息进行分流，使用流程控制函数```next()```决定放行或舍弃收到的消息。
 
-- **执行```next()```**：放行进程间通信消息，进入消息实际处理阶段。此时，**ClusterCore**将分发来自**发送方**的原始消息进入```onProcessDidReceiveMessage()```继续处理。
+- 执行```next()```：放行进程间通信消息进入下一处理阶段。此时，**ClusterCore**将分发来自**发送方**源消息的自定义数据```data```进入```onProcessDidReceiveMessage()```继续处理。
 
-- **执行```next(data)```**：放行进程间通信消息，使用新的消息结构进入实际处理阶段。**ClusterCore**将分发```next()```带入的自定义消息```data```进入```onProcessDidReceiveMessage()```继续处理。
+- 执行```next(data)```：放行进程间通信消息，使用新消息进入下一处理阶段。**ClusterCore**将使用```next()```带入的```data```覆盖源消息的自定义数据```data```中的```payload```并进入```onProcessDidReceiveMessage()```继续处理。
 
-- **执行```next('discard')```、```next(null)```、```next(undefined)```**：拦截进程间通信消息，进入消息舍弃处理阶段。**ClusterCore**将分发来自**发送方**的原始消息进入```onProcessDidDiscardMessage()```执行舍弃处理。
+- 执行```next(CLUSTER_CORE_MESSAGE_COMMAND_DISCARD)```：舍弃进程间通信消息，进入消息舍弃处理阶段。**ClusterCore**将分发来自**发送方**源消息的自定义数据```data```进入```onProcessDidDiscardMessage()```执行舍弃处理。
 
 ::: tip 提示
-如果在实现**AppMain**时没有重写此生命周期方法，则默认执行```next()```放行进程间通信消息。
+如果在实现**AppMain**时没有重写此生命周期方法，将默认执行```next()```分发源消息的自定义数据进入```onProcessDidReceiveMessage()```。
 :::
 
 ---
@@ -533,11 +589,12 @@ Core.ClusterCore.start();
 
 ##### 触发场景
 
-当前进程中进程间通信消息在确认阶段被放行时触发。
+- 当前进程中收到的**自定义通信消息**在分流阶段被放行时触发。
+- 当前进程中收到的应答消息触发的```traceCallBack()```中执行了```next()```时触发。
 
-##### 使用方法
+##### 使用方式
 
-通常，我们在此生命周期方法中根据消息结构中指定的```action```执行实际触发的业务逻辑，比如：[应答TraceIPC](#应答traceipc)等。
+通常，我们在此生命周期方法中完成对消息触发的实际业务逻辑的处理，比如：[应答TraceIPC](#应答traceipc)等。
 
 ---
 
@@ -546,16 +603,28 @@ Core.ClusterCore.start();
 
 ##### 触发场景
 
-当前进程中进程间通信消息在确认阶段被舍弃时触发。
+- 当前进程中收到的**自定义通信消息**在分流阶段被舍弃时触发。
+- 当前进程中在**TraceIPC**超时后收到了应答消息时触发。
 
-##### 使用方法
+##### 使用方式
 
 通常，我们在此生命周期方法中统一处理被舍弃的进程间通信消息。
 
+---
+
+#### ```onProcessTraceMessageTimeout()```
+
+##### 触发场景
+
+当前进程发起**TraceIPC**，在指定时间内未收到**接收方**应答时触发。
+
+##### 使用方式
+
+通常，我们在此生命周期方法中统一处理超时的**TraceIPC**消息，比如：重新尝试发起**TraceIPC**等。
 
 ## 全局对象
 
-我们已经知道，在多进程架构的应用程序中，不同的进程拥有完全独立的内存空间，进程内的状态完全隔离。因此，Corejs提供了在多个**Worker进程**中共享的状态的能力，即：**全局对象**。
+我们已经知道，在多进程架构的应用程序中，不同的进程拥有完全独立的内存空间，进程内的状态完全隔离。因此，Corejs提供了在进程组中共享状态的能力，即：**全局对象**。
 
 ::: warning 注意
 **全局对象**仅限于在单个应用程序中的多个进程之间共享数据，无法取代分布式协调工具，比如：```ZooKeeper```、```Redis```等。
@@ -564,6 +633,19 @@ Core.ClusterCore.start();
 ### API设计
 
 在实现细节上，**全局对象**是一个存储在**Master进程**中的```Object```，**Worker进程**通过[进程间通信](#进程间通信)向**Master进程**发起读写指令以实现对**全局对象**的访问。
+
+::: tip 提示
+因此，**全局对象**中值的类型受制于进程间通信时nodejs自动执行序列化的影响。
+
+为避免序列化造成的问题，我们设置全局对象时同样应使用基本类型构成的```field```，即：
+
+- ```Array```
+- ```Object```
+- ```Number```
+- ```String```
+- ```Boolean```
+:::
+
 
 **ClusterCore**提供了对**全局对象**进行简单读写操作的API：
 
@@ -584,6 +666,7 @@ Core.ClusterCore.start();
 ##### 参数列表
 
 - ```keyPath```：期望读取的键名或键路径，非必填项。指定键路径时，使用键名链路字符串构成的```Array```即可。
+
   > 当此项未指定或指定为```null```、```undefined```、```NaN```、```''```、```[]```、```{}```时将读取整个**全局对象**。
 
   ::: tip 提示
@@ -664,7 +747,7 @@ Core.ClusterCore.start();
 
 #### 数组指令
 
-在```setGlobalObject()```时，如果指定的**键路径**对应了```Array```类型的值，我们可以在**键路径**中追加以下**数组指令**以快捷实现数组变异操作：
+在```setGlobalObject()```时，如果指定的**键路径**对应了**全局对象**中的值为```Array```类型，我们可以在**键路径**中追加以下**数组指令**以快捷实现数组变异操作：
 
 | 数组指令                                           | 作用                                      |
 | :------------------------------------------------ | :--------------------------------------- |
@@ -703,6 +786,92 @@ Core.ClusterCore.start();
 
 ### 数据一致性
 
-在多进程架构下，对**全局对象**的并发写操作可能会导致数据一致性的问题。为了保证操作的事务性，在**Master进程**中对**全局对象**的写操作将按照触发顺序同步执行。
+在多进程架构下，对**全局对象**的并发操作可能会导致数据一致性问题。为保证操作**全局对象**的事务性，**ClusterCore**提供了对**全局对象**进行自定义事务操作的API：
 
-相关API正在开发，**ClusterCore**将提供在**Master进程**中远程执行代码以操作**全局对象**的能力。
+- [```queryGlobalObject([context,] [queryFn,] callBack)```](#)：自定义读取**全局对象**。
+
+- [```updateGlobalObject([context,] updateFn[, callBack])```](#)：自定义更新**全局对象**。
+
+::: danger 注意
+**自定义读取/更新全局对象的API在Master进程中使用Sandbox严格同步执行代码片段的方式以保证全局对象在同一时刻仅被一个操作访问。**
+
+因此，操作规则```queryFn```和```updateFn```中**不允许执行异步逻辑**也**无法访问外部变量**，我们可以通过```context```将外部资源植入Sandbox。
+
+需要注意的是，```context```受制于进程间通信时nodejs自动执行序列化的影响，应使用基本类型构成，即：
+
+- ```Array```
+- ```Object```
+- ```Number```
+- ```String```
+- ```Boolean```
+:::
+
+#### ```queryGlobalObject()```
+
+##### 使用说明
+
+在自定义读取**全局对象**时，我们可以使用以下方式：
+
+- ```queryGlobalObject(callBack)```：适用于直接读取整个**全局对象**的场景。
+
+- ```queryGlobalObject(queryFn, callBack)```：适用于使用不访问任何外部资源的自定义规则读取**全局对象**的场景。
+
+- ```queryGlobalObject(context, queryFn, callBack)```：适用于使用依赖外部资源的自定义规则读取**全局对象**的场景。
+
+##### 参数列表
+
+- ```context```：应用于读取规则的资源上下文，非必填项。
+
+- ```queryFn```：**全局对象**的自定义读取规则，非必填项，是一个```Function```。其参数列表为```(globalObject, context)```：
+
+  - ```globalObject```：执行读取操作时应用程序中**全局对象**的快照。
+  - ```context```：外部资源上下文。当执行自定义读取操作未指定资源上下文时，则此值为```undefined```。
+
+  ::: danger 注意
+  **ClusterCore**将在未指定自定义读取规则```queryFn```时返回整个**全局对象**。另外，```queryFn```中**不允许执行异步逻辑**也**无法访问外部变量**。
+
+  通常，我们在```queryFn```中根据外部依赖资源```context```对```globalObject```进行解析和计算，并将期望的数据结构使用```return```指令返回。
+  :::
+
+- ```callBack```：自定义读取**全局对象**的执行结果，必填项，是一个cps风格的```Function```。其参数列表为```(error, value)```：
+
+  - ```error```：自定义读取**全局对象**失败的原因，为```null```时表示读取动作执行成功。
+  - ```value```：自定义读取规则的返回值，即```queryFn```中```return```的结果，当操作执行失败时为```undefined```。
+
+  ::: tip 说明
+  在执行```queryGlobalObject()```时，即使没有指定```callBack```也不会产生阻塞性异常。
+  
+  出于性能考虑，在检测到没有指定```calllBack```时将直接退出，不再触发实际读取逻辑。
+  :::
+
+#### ```updateGlobalObject()```
+
+##### 使用说明
+
+在自定义更新**全局对象**时，我们可以使用以下方式：
+
+- ```updateGlobalObject(updateFn)```：适用于直接更新**全局对象**不关注执行结果的场景。
+
+- ```updateGlobalObject(context, updateFn)```：适用于使用依赖外部资源的自定义规则更新**全局对象**但不关注执行结果的场景。
+
+- ```updateGlobalObject(context, updateFn, callBack)```：适用于使用依赖外部资源的自定义规则更新**全局对象**的场景。
+
+##### 参数列表
+
+- ```context```：应用于更新规则的资源上下文，非必填项。
+
+- ```updateFn```：**全局对象**的自定义更新规则，必填项，是一个```Function```。其参数列表为```(globalObject, context)```：
+
+  - ```globalObject```：执行更新操作时应用程序中**全局对象**的快照。
+  - ```context```：外部资源上下文。当执行自定义更新操作未指定资源上下文时，则此值为```undefined```。
+
+  ::: tip 提示
+  自定义更新规则```updateFn```中**不允许执行异步逻辑**也**无法访问外部变量**。**ClusterCore**将使用```Object.assign()```将```updateFn```的执行结果应用至**全局对象**。
+
+  通常，我们在```updateFn```中根据外部依赖资源```context```和当前```globalObject```完成解析和计算，并通过使用```Spread```等操作符重组新的**全局对象**使用```return```指令返回。
+  :::
+
+- ```callBack```：自定义更新**全局对象**的执行结果，非必填项，是一个cps风格的```Function```。其参数列表为```(error, globalObject)```：
+
+  - ```error```：自定义更新**全局对象**失败的原因，为```null```时表示更新动作执行成功。
+  - ```globalObject```：自定义更新操作执行成功后的**全局对象**，当操作执行失败时为```undefined```。
