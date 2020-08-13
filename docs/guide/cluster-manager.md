@@ -38,17 +38,17 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 
 **AppMain**抽象了**应用模型**和**进程模型**，覆盖了应用程序生命周期的各个阶段：
 
-- [```onProcessDidInit(processId, launchParams)```](#onprocessdidinit)：**Master/Worker进程**完成初始化时触发。
+- [```onProcessDidInit(processId, launchParams)```](#onprocessdidinit-processid-launchparams)：**Master/Worker进程**完成初始化时触发。
 
-- [```onWorkerProcessDidExit(exitedProcessId, exitedDetail, reboot)```](#onworkerprocessdidexit)：**Master进程**捕获到**Worker进程**退出时触发。
+- [```onWorkerProcessDidExit(exitedProcessId, exitedDetail, reboot)```](#onworkerprocessdidexit-exitedprocessid-exiteddetail-reboot)：**Master进程**捕获到**Worker进程**退出时触发。
 
-- [```onProcessWillReceiveMessage(fromProcessId, data, next)```](#onprocesswillreceivemessage)：**Master/Worker进程**接收到进程间通信消息时触发。
+- [```onProcessWillReceiveMessage(fromProcessId, data, next)```](#onprocesswillreceivemessage-fromprocessid-data-next)：**Master/Worker进程**接收到进程间通信消息时触发。
 
-- [```onProcessDidReceiveMessage(fromProcessId, data)```](#onprocessdidreceivemessage)：**Master/Worker进程**决定处理进程间通信消息时触发。
+- [```onProcessDidReceiveMessage(fromProcessId, data)```](#onprocessdidreceivemessage-fromprocessid-data)：**Master/Worker进程**决定处理进程间通信消息时触发。
 
-- [```onProcessDidDiscardMessage(fromProcessId, data)```](#onprocessdiddiscardmessage)：**Master/Worker进程**决定丢弃进程间通信消息时触发。
+- [```onProcessDidDiscardMessage(fromProcessId, data)```](#onprocessdiddiscardmessage-fromprocessid-data)：**Master/Worker进程**决定丢弃进程间通信消息时触发。
 
-- [```onProcessTraceMessageTimeout(toProcessId, data)```](#onprocesstracemessagetimeout)：**Master/Worker进程**中需要应答的进程间通信超时未接收到应答消息时触发。
+- [```onProcessTraceMessageTimeout(toProcessId, data)```](#onprocesstracemessagetimeout-toprocessid-data)：**Master/Worker进程**中需要应答的进程间通信超时未接收到应答消息时触发。
 
 ::: tip 提示
 我们在实现**AppMain**时，需要继承自```Core.AppMain```。
@@ -92,7 +92,17 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 对于**Master进程**的退出事件，我们可以**Master进程**的业务层中使用```process.on()```。
 :::
 
-#### ```onProcessDidInit()```
+---
+
+#### ```onProcessDidInit(processId, launchParams)```
+
+##### 参数列表
+
+- ```processId```：初始化完成的进程ID。
+
+- ```launchParams```：进程的初始化参数，即**Master进程**中的```process.argv```。
+
+##### 使用场景
 
 **Master进程**、**Worker进程**初始化完成时将触发此生命周期方法。通常，我们在此方法中根据```processId```判断当前的进程环境执行不同的逻辑：
 
@@ -104,13 +114,27 @@ Corejs引入了[ClusterCore](#clustercore)和[AppMain](#appmain)以实现应用�
 在微服务架构中，如果需要在多个应用程序间同步或共享数据，我们可以使用分布式协调工具，比如：```ZooKeeper```、```Redis```等。
 :::
 
-#### ```onWorkerProcessDidExit()```
+---
+
+#### ```onWorkerProcessDidExit(exitedProcessId, exitedDetail, reboot)```
+
+##### 参数列表
+
+- ```exitedProcessId```：已退出的进程ID。
+
+- ```exitedDetail```：进程退出详情，结构为```{ code, signal }```。
+
+- ```reboot```：重新拉起**Worker进程**的函数。使用```reboot()```重新拉起的进程将使用```exitedProcessId```作为进程ID。
+
+##### 使用场景
 
 **Master进程**检测到进程组中有**Worker进程**退出时将触发此生命周期方法。我们在此方法中有两种重新拉起**Worker进程**的方式：
 
 - 使用```reboot()```：新的**Worker进程**将复用退出进程的```processId```。
 
 - 使用```Core.ClusterCore.fork()```：新的**Worker进程**将使用进程组内的进程偏移创建```processId```。
+
+---
 
 #### 实现原理
 
@@ -203,9 +227,9 @@ Core.ClusterCore.start();
 
 **ClusterCore**提供了在进程组中的任意进程间发起[IPC](#ipc)和[TraceIPC](#traceipc)的API：
 
-- [```sendData(processId, data[, callBack])```](#senddata)：用于发起[IPC](#ipc)。
+- [```sendData(processId, data[, callBack])```](#senddata-processid-data-callback)：用于发起[IPC](#ipc)。
 
-- [```sendDataWithTraceCallBack(processId, data, options[, callBack])```](#senddatawithtracecallback)：用于发起[TraceIPC](#traceipc)。
+- [```sendDataWithTraceCallBack(processId, data, options[, callBack])```](#senddatawithtracecallback-processid-data-options-callback)：用于发起[TraceIPC](#traceipc)。
 
 ::: danger 注意
 **ClusterCore将拒绝在相同的进程间发起的通信动作。**
@@ -213,7 +237,7 @@ Core.ClusterCore.start();
 
 ---
 
-#### ```sendData()```
+#### ```sendData(processId, data[, callBack])```
 
 ##### 使用场景
 
@@ -240,7 +264,7 @@ Core.ClusterCore.start();
 
 ---
 
-#### ```sendDataWithTraceCallBack()```
+#### ```sendDataWithTraceCallBack(processId, data, options[, callBack])```
 
 ##### 使用场景
 
@@ -561,66 +585,95 @@ Core.ClusterCore.start();
 
 ---
 
-我们可以重写**AppMain**中消息处理相关的生命周期方法，以定制进程间通信消息的处理流程：
-
-#### ```onProcessWillReceiveMessage()```
-
-##### 触发场景
-
-当前进程接收到**自定义通信消息**时触发此生命周期方法。
-
-##### 使用方式
-
-通常，我们在此生命周期方法中对进程间通信消息进行分流，使用流程控制函数```next()```决定放行或舍弃收到的消息。
-
-- 执行```next()```：放行进程间通信消息进入下一处理阶段。此时，**ClusterCore**将分发来自**发送方**源消息的自定义数据```data```进入```onProcessDidReceiveMessage()```继续处理。
-
-- 执行```next(data)```：放行进程间通信消息，使用新消息进入下一处理阶段。**ClusterCore**将使用```next()```带入的```data```覆盖源消息的自定义数据```data```中的```payload```并进入```onProcessDidReceiveMessage()```继续处理。
-
-- 执行```next(CLUSTER_CORE_MESSAGE_COMMAND_DISCARD)```：舍弃进程间通信消息，进入消息舍弃处理阶段。**ClusterCore**将分发来自**发送方**源消息的自定义数据```data```进入```onProcessDidDiscardMessage()```执行舍弃处理。
+我们可以重写**AppMain**中消息处理相关的生命周期方法，以定制进程间通信消息的处理流程。
 
 ::: tip 提示
-如果在实现**AppMain**时没有重写此生命周期方法，将默认执行```next()```分发源消息的自定义数据进入```onProcessDidReceiveMessage()```。
+在消息处理的相关生命周期方法中，仅带入进程间通信消息的自定义数据部分，即```data```。我们可以通过：
+
+- ```data.getOriginData()```：读取完整的[消息结构](#消息结构)。
+
+- ```data.getTraceDetail()```：读取消息的链路追踪信息，即我们在[消息结构](#消息结构)中提到的```{ traceId, responsive, resTrace }```。
+
+需要注意的是，消息处理流程在实现细节上使用中间件模式，任何对```data```或```originData```的修改将被保留并分发至后续的处理流程。因此，我们在业务层应尽量避免修改源消息。
+:::
+
+接下来，我们将讨论**AppMain**中消息处理相关的生命周期方法：
+
+#### ```onProcessWillReceiveMessage(fromProcessId, data, next)```
+
+##### 参数列表
+
+- ```fromProcessId```：消息**发送方**的进程ID。
+
+- ```data```：消息的自定义数据。
+
+- ```next```：流程分发函数。我们将在接下来的[使用场景](#使用场景-5)中介绍流程分发函数的使用方法。
+
+##### 使用场景
+
+当前进程接收到**自定义通信消息**时触发此生命周期方法。通常，我们在此生命周期方法中对进程间通信消息进行分流，使用流程控制函数```next()```确认或舍弃收到的消息。
+
+- 执行```next()```：确认进程间通信消息，分发源消息进入```onProcessDidReceiveMessage()```。是```onProcessWillReceiveMessage()```的默认行为。
+
+- 执行```next(data)```：确认进程间通信消息，将```next()```带入的```data```覆盖源消息的自定义数据```data```中的```payload```并```onProcessDidReceiveMessage()```。
+
+- 执行```next(CLUSTER_CORE_MESSAGE_COMMAND_DISCARD)```：舍弃进程间通信消息，分发源消息进入```onProcessDidDiscardMessage()```。
+
+::: tip 提示
+**Master进程**和**Worker进程**收到**自定义通信消息**时都将触发**AppMain**中的```onProcessWillReceiveMessage()```。因此，我们通常根据消息的```action```实现分流逻辑，无需关注当前运行进程环境。
 :::
 
 ---
 
-#### ```onProcessDidReceiveMessage()```
+#### ```onProcessDidReceiveMessage(fromProcessId, data)```
 
-##### 触发场景
+##### 参数列表
 
-- 当前进程中收到的**自定义通信消息**在分流阶段被放行时触发。
-- 当前进程中收到的应答消息触发的```traceCallBack()```中执行了```next()```时触发。
+- ```fromProcessId```：消息**发送方**的进程ID。
 
-##### 使用方式
+- ```data```：消息的自定义数据。
 
-通常，我们在此生命周期方法中完成对消息触发的实际业务逻辑的处理，比如：[应答TraceIPC](#应答traceipc)等。
+##### 使用场景
 
----
+此生命周期方法有两种触发方式：
 
-#### ```onProcessDidDiscardMessage()```
+- 当前进程中收到的**自定义通信消息**在分流阶段被确认。
+- 当前进程中收到的**TraceIPC**应答消息触发的```traceCallBack()```中执行了```next()```。
 
-
-##### 触发场景
-
-- 当前进程中收到的**自定义通信消息**在分流阶段被舍弃时触发。
-- 当前进程中在**TraceIPC**超时后收到了应答消息时触发。
-
-##### 使用方式
-
-通常，我们在此生命周期方法中统一处理被舍弃的进程间通信消息。
+通常，我们在此生命周期方法中根据消息的```action```实现消息触发的实际业务逻辑，比如：[应答TraceIPC](#应答traceipc)等。
 
 ---
 
-#### ```onProcessTraceMessageTimeout()```
+#### ```onProcessDidDiscardMessage(fromProcessId, data)```
 
-##### 触发场景
+##### 参数列表
 
-当前进程发起**TraceIPC**，在指定时间内未收到**接收方**应答时触发。
+- ```fromProcessId```：消息**发送方**的进程ID。
 
-##### 使用方式
+- ```data```：消息的自定义数据。
 
-通常，我们在此生命周期方法中统一处理超时的**TraceIPC**消息，比如：重新尝试发起**TraceIPC**等。
+##### 使用场景
+
+此生命周期方法有两种触发方式：
+
+- 当前进程中收到的**自定义通信消息**在分流阶段被舍弃。
+- 当前进程中在**TraceIPC**超时后收到了应答消息。
+
+通常，我们在此生命周期方法中对被舍弃的进程间通信消息进行统一处理。
+
+---
+
+#### ```onProcessTraceMessageTimeout(toProcessId, data)```
+
+##### 参数列表
+
+- ```fromProcessId```：超时的**TraceIPC**消息**接收方**的进程ID。
+
+- ```data```：消息的自定义数据。
+
+##### 使用场景
+
+当前进程发起**TraceIPC**且在指定时间内未收到**接收方**应答时触发此生命周期方法。通常，我们在此生命周期方法对超时的**TraceIPC**消息进行统一处理，比如：重新尝试发起**TraceIPC**等。
 
 ## 全局对象
 
@@ -649,15 +702,15 @@ Core.ClusterCore.start();
 
 **ClusterCore**提供了对**全局对象**进行简单读写操作的API：
 
-- [```getGlobalObject([keyPath], callBack)```](#getglobalobject)：读取**全局对象**中指定键名或键路径对应的值。
+- [```getGlobalObject([keyPath], callBack)```](#getglobalobject-keypath-callback)：读取**全局对象**中指定键名或键路径对应的值。
 
-- [```setGlobalObject(keyPath[, value][, callBack])```](#setglobalobject)：设置/更新**全局对象**中指定键名或键路径指向的```field```。
+- [```setGlobalObject(keyPath[, value][, callBack])```](#setglobalobject-keypath-value-callback)：设置/更新**全局对象**中指定键名或键路径指向的```field```。
 
-- [```removeGlobalObject(keyPath[, callBack])```](#removeglobalobject)：移除**全局对象**中指定键名或键路径指向的```field```。
+- [```removeGlobalObject(keyPath[, callBack])```](#removeglobalobject-keypath-callback)：移除**全局对象**中指定键名或键路径指向的```field```。
 
 ---
 
-#### ```getGlobalObject()```
+#### ```getGlobalObject([keyPath], callBack)```
 
 ##### 使用说明
 
@@ -687,7 +740,7 @@ Core.ClusterCore.start();
 
 ---
 
-#### ```setGlobalObject()```
+#### ```setGlobalObject(keyPath[, value][, callBack])```
 
 ::: tip 提示
 本节中使用的宏变量存储在```Core.Macros```中。
@@ -874,7 +927,7 @@ setTimeout(() => {
 }, 1000);
 ```
 
-#### ```removeGlobalObject()```
+#### ```removeGlobalObject(keyPath[, callBack])```
 
 ##### 使用说明
 
@@ -954,9 +1007,9 @@ Core.ClusterCore.start();
 
 在多进程架构下，对**全局对象**的并发操作可能会导致数据一致性问题。为保证操作**全局对象**的事务性，**ClusterCore**提供了对**全局对象**进行自定义事务操作的API：
 
-- [```queryGlobalObject([context,] [queryFn,] callBack)```](#)：自定义读取**全局对象**。
+- [```queryGlobalObject([context,] [queryFn,] callBack)```](#queryglobalobject-context-queryfn-callback)：自定义读取**全局对象**。
 
-- [```updateGlobalObject([context,] updateFn[, callBack])```](#)：自定义更新**全局对象**。
+- [```updateGlobalObject([context,] updateFn[, callBack])```](#updateglobalobject-context-updatefn-callback)：自定义更新**全局对象**。
 
 ::: danger 注意
 **自定义读取/更新全局对象的API在Master进程中使用Sandbox严格同步执行代码片段的方式以保证全局对象在同一时刻仅被一个操作访问。**
@@ -972,7 +1025,7 @@ Core.ClusterCore.start();
 - ```Boolean```
 :::
 
-#### ```queryGlobalObject()```
+#### ```queryGlobalObject([context,] [queryFn,] callBack)```
 
 ##### 使用说明
 
@@ -1076,7 +1129,7 @@ Core.ClusterCore.init(AppMain);
 Core.ClusterCore.start();
 ```
 
-#### ```updateGlobalObject()```
+#### ```updateGlobalObject([context,] updateFn[, callBack])```
 
 ##### 使用说明
 
