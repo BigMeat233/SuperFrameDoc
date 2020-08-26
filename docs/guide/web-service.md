@@ -29,7 +29,6 @@ const serviceCore = new Core.ServiceCore();
   :::
 
 - ```configs.middlewares```：全局中间件列表。非必填项，默认值：```[]```。
-- ```configs.logger```：日志输出器，指定内部日志输出使用的输出器。非必填项，默认为空日志输出器。
 
 ---
 
@@ -367,7 +366,7 @@ serviceCore.start();
 
 ## 日志收集
 
-**ServiceCore**支持由构造参数```configs.logger```配置项指定日志输出器的方式进行日志收集，默认使用空日志输出器（即：具有空```log()```方法的实例对象）。在内部实现上，**ServiceCore**调用输出器实例的```log(level, funcName, message)```输出日志。
+**ServiceCore**支持通过其实例属性```logger```指定日志输出器。在内部实现上，**ServiceCore**调用输出器实例的```log(level, funcName, message)```输出日志。
 
 通常，我们使用Corejs内置的[日期输出器](/guide/logger-introduce.html#日期输出器)作为**ServiceCore**的日志输出器：
 
@@ -376,10 +375,9 @@ Corejs内置的**日期输出器**将同一周期内产生的日志归档至一�
 :::
 
 ```javascript
-const serviceCore = new Core.ServiceCore({
-  // 指定ServiceCore使用DateLogger进行日志收集
-  logger: new Core.DateLogger({ filePrefix: 'ServiceCore' })
-});
+const serviceCore = new Core.ServiceCore();
+// 指定ServiceCore使用DateLogger进行日志收集
+serviceCore.logger = new Core.DateLogger({ filePrefix: 'ServiceCore' });
 ```
 
 ---

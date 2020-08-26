@@ -38,13 +38,13 @@
 
 ### 生命周期
 
-- ```initHandler(serviceCore, req, res)```
+- ```initHandler(req, res)```
 
   - **使用场景**：指定**Handler**的初始化逻辑。
 
   - **调用时机**：在**ServiceCore**处理客户端请求时，创建**Handler实例**后将调用此方法执行[Handler初始化](#handler初始化)。
 
-  - **注意事项**：重写时必须执行```super```操作。
+  - **注意事项**：重写时无需执行```super```操作。
 
 - ```destroyHandler(req, res)```
 
@@ -53,12 +53,6 @@
   - **调用时机**：在**Handler**任意处理阶段，返回实例```res```向客户端返回了数据时会调用此方法触发[Handler析构](#handler析构)。
 
   - **注意事项**：重写时无需执行```super```操作。
-
-  ::: danger 注意
-  **```Core.Handler```内置的```initHandler()```会对客户端返回实例```res```的```end```方法进行HOOK以实现在Handler任意处理阶段向客户端返回数据时触发[Handler析构](#handler析构)**。因此，我们在重写```initHandler()```时一定要执行```super```操作，否则**Handler**可能无法正常析构。
-
-  注：```res.send()```等操作最终会调用```res.end()```。
-  :::
 
 --- 
 
@@ -233,17 +227,11 @@
 
 通常，我们在**Handler初始化**时根据客户端请求情况创建处理过程中使用的资源，并将这些资源提升为实例属性在整个**Handler生命周期**中共享：
 
-::: danger 注意
-重写```initHandler()```时必须执行```super```操作，否则**Handler**无法正常进入[Handler析构](#handler析构)。
-:::
-
 ```javascript
 const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  initHandler(serviceCore, req, res) {
-    // 执行super操作
-    super.initHandler(serviceCore, req, res);
+  initHandler(req, res) {
     // 创建一个在整个生命周期中共享的基础输出器
     this.logger = new Core.BaseLogger();
   }
@@ -257,9 +245,7 @@ class Handler extends Core.Handler {
 const Core = require('node-corejs');
 
 class Handler extends Core.Handler {
-  initHandler(serviceCore, req, res) {
-    // 执行super操作
-    super.initHandler(serviceCore, req, res);
+  initHandler(req, res) {
     // 需要ServiceCore等待异步行为时使用Promise
     return new Promise((resolve) => {
       // ...
@@ -286,8 +272,7 @@ const Core = require('node-corejs');
 // 自定义Handler
 class Handler extends Core.Handler {
   // Handler初始化
-  initHandler(serviceCore, req, res) {
-    super.initHandler(serviceCore, req, res);
+  initHandler(req, res) {
     this.logger = new Core.BaseLogger();
     this.startTime = new Date();
     this.logger.log('开始处理用户请求...');

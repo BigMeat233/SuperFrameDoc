@@ -639,8 +639,7 @@ class TestHandler extends Core.Handler {
     return '/Test.do';
   }
 
-  initHandler(serviceCore, req, res) {
-    super.initHandler(serviceCore, req, res);
+  initHandler(req, res) {
     // 在初始化阶段创建日志输出组
     const method = req.method.toUpperCase();
     this.logger = loggerCore.createGroupLogger(HandlerLogger, {
