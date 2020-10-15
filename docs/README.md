@@ -11,7 +11,7 @@ features:
 - title: 友好
   details: 兼容Express中间件生态，支持中间件动态挂载和调用，支持多维度中间件配置。
 - title: 高效
-  details: 内置Web服务器、日志输出器、进程管理模型，开箱即用。
+  details: 内置Web服务器、日志输出器、进程管理模型，且支持自动异常捕获，开箱即用。
 footer: MIT Licensed | Copyright © 2020-present Douzi
 ---
 ### 仅三步启动Web服务
