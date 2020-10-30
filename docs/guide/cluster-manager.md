@@ -321,7 +321,7 @@ Core.ClusterCore.start();
 
 - ```isTransitRes```：是否为转发结果的应答消息。
 
-- ```transitTraceId```：转发结果消息的链路追踪ID。
+- ```transitTraceId```：转发结果消息的链路追踪ID。
 
 ---
 
@@ -461,7 +461,7 @@ Core.ClusterCore.start();
 对于```traceId```的结构：
 
 - 由24位字符组成。
-- 前12位为当前时间戳的16进制表示，位数不足填充```0```。
+- 前12位为当前时间戳的16进制表示，位数不足填充```0```。
 - 第13-16位为当前进程PID的16进制表示，位数不足填充```0```。
 - 第16-24位为随机数，位数不足填充```0```。
 
@@ -555,7 +555,7 @@ Core.ClusterCore.start();
 本章中使用的宏变量存储在```Core.Macros```中。
 :::
 
-在收到进程间通信消息时，**ClusterCore**将根据进程间通信消息自定义数据中的```action```对**内部通信消息**和**自定义通信消息**进行预分类：
+在收到进程间通信消息时，**ClusterCore**将根据进程间通信消息自定义数据中的```action```对**内部通信消息**和**自定义通信消息**进行预分类：
 
 - 对于**自定义通信消息**，将直接进入**AppMain**中进行消息处理。
 
@@ -565,23 +565,23 @@ Core.ClusterCore.start();
 
 进程间通信消息自定义数据中的```action```指定为以下宏变量时，将被**ClusterCore**认为是**内部通信消息**，此类消息不会进入**AppMain**中的消息处理流程：
 
-| 宏变量                                                               | 描述                                           |
-| :------------------------------------------------------------------ | :-------------------------------------------- |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_INITIAL_INFO```     | Worker进程向Master进程发起获取初始化信息           |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_INITIAL_INFO```     | Master进程向Worker进程应答初始化信息              |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_SET_GLOBAL_OBJECT```    | Worker进程向Master进程发起设置全局对象             |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_SET_GLOBAL_OBJECT```    | Master进程向Worker进程应答设置全局对象执行结果      |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_GLOBAL_OBJECT```    | Worker进程向Master进程发起获取全局对象             |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_GLOBAL_OBJECT```    | Master进程向Worker进程应答获取全局对象执行结果      |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_REMOVE_GLOBAL_OBJECT``` | Worker进程向Master进程发起删除全局对象             |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_REMOVE_GLOBAL_OBJECT``` | Master进程向Worker进程应答删除全局对象执行结果      |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_ALL_PROCESS_IDS```  | Worker进程向Master进程发起获取进程组内的所有进程ID  |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_ALL_PROCESS_IDS```  | Master进程向Worker进程应答进程组内所有进程ID       |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_QUERY_GLOBAL_OBJECT```  | Worker进程向Master进程发起自定义读取全局对象        |
+| 宏变量                                                              | 描述                                                 |
+| :------------------------------------------------------------------ | :--------------------------------------------------- |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_INITIAL_INFO```     | Worker进程向Master进程发起获取初始化信息             |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_INITIAL_INFO```     | Master进程向Worker进程应答初始化信息                 |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_SET_GLOBAL_OBJECT```    | Worker进程向Master进程发起设置全局对象               |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_SET_GLOBAL_OBJECT```    | Master进程向Worker进程应答设置全局对象执行结果       |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_GLOBAL_OBJECT```    | Worker进程向Master进程发起获取全局对象               |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_GLOBAL_OBJECT```    | Master进程向Worker进程应答获取全局对象执行结果       |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_REMOVE_GLOBAL_OBJECT``` | Worker进程向Master进程发起删除全局对象               |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_REMOVE_GLOBAL_OBJECT``` | Master进程向Worker进程应答删除全局对象执行结果       |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_GET_ALL_PROCESS_IDS```  | Worker进程向Master进程发起获取进程组内的所有进程ID   |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_GET_ALL_PROCESS_IDS```  | Master进程向Worker进程应答进程组内所有进程ID         |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_QUERY_GLOBAL_OBJECT```  | Worker进程向Master进程发起自定义读取全局对象         |
 | ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_QUERY_GLOBAL_OBJECT```  | Master进程向Worker进程应答自定义读取全局对象执行结果 |
-| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_UPDATE_GLOBAL_OBJECT``` | Worker进程向Master进程发起自定义更新全局对象        |
+| ```CLUSTER_CORE_WORKER_TO_MASTER_ACTION_REQ_UPDATE_GLOBAL_OBJECT``` | Worker进程向Master进程发起自定义更新全局对象         |
 | ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_UPDATE_GLOBAL_OBJECT``` | Master进程向Worker进程应答自定义更新全局对象执行结果 |
-| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_TRANSIT_RESULT```       | Master进程向Worker进程应答通信消息转发结果         |
+| ```CLUSTER_CORE_MASTER_TO_WORKER_ACTION_RES_TRANSIT_RESULT```       | Master进程向Worker进程应答通信消息转发结果           |
 
 ---
 
@@ -759,7 +759,7 @@ Core.ClusterCore.start();
   ::: tip 说明
   ```setGlobalObject()```不允许对**全局对象**进行不安全的写入，在执行以下操作时将在```callBack```中得到一个异常：
 
-  - 尝试在不存在的```field```中创建新```field```。
+  - 尝试在不存在的```field```中创建新```field```。
   - 尝试在值为非引用类型的```field```中创建新```field```。
   :::
 
@@ -856,16 +856,16 @@ setTimeout(() => {
 
 在```setGlobalObject()```时，如果指定的**键路径**对应了**全局对象**中的值为```Array```类型，我们可以在**键路径**中追加以下**数组指令**以快捷实现数组变异操作：
 
-| 数组指令                                           | 作用                                      |
-| :------------------------------------------------ | :--------------------------------------- |
+| 数组指令                                          | 作用                                          |
+| :------------------------------------------------ | :-------------------------------------------- |
 | ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_POP```        | 删除数组尾部的第一个元素，即执行```pop()```   |
-| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_PUSH```       | 向数组尾部追加新元素，即执行```push()```     |
-| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_FILL```       | 数组填充，即执行```fill()```               |
+| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_PUSH```       | 向数组尾部追加新元素，即执行```push()```      |
+| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_FILL```       | 数组填充，即执行```fill()```                  |
 | ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_SHIFT```      | 删除数组头部的第一个元素，即执行```shift()``` |
-| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_SPLICE```     | 对数组执行铰接操作，即执行```splice()```     |
-| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_UNSHIFT```    | 向数组头部添加新元素，即执行```unshift()```  |
-| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_REVERSE```    | 数组翻转，即执行```reverse()```            |
-| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_COPYWITHIN``` | 数组内部替换，即执行```copywhthin()```      |
+| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_SPLICE```     | 对数组执行铰接操作，即执行```splice()```      |
+| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_UNSHIFT```    | 向数组头部添加新元素，即执行```unshift()```   |
+| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_REVERSE```    | 数组翻转，即执行```reverse()```               |
+| ```CLUSTER_CORE_GLOBAL_OBJECT_ARRAY_COPYWITHIN``` | 数组内部替换，即执行```copywhthin()```        |
 
 ##### 使用样例
 
@@ -1153,7 +1153,7 @@ Core.ClusterCore.start();
   ::: tip 提示
   自定义更新规则```updateFn```中**不允许执行异步逻辑**也**无法访问外部变量**。**ClusterCore**将使用```Object.assign()```将```updateFn```的执行结果应用至**全局对象**。
 
-  通常，我们在```updateFn```中根据外部依赖资源```context```和当前```globalObject```完成解析和计算，并通过使用```Spread```等操作符重组新的**全局对象**使用```return```指令返回。
+  通常，我们在```updateFn```中根据外部依赖资源```context```和当前```globalObject```完成解析和计算，并通过使用```Spread```等操作符重组新的**全局对象**使用```return```指令返回。
   :::
 
 - ```callBack```：自定义更新**全局对象**的执行结果，非必填项，是一个cps风格的```Function```。其参数列表为```(error, globalObject)```：
