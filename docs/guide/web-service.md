@@ -66,6 +66,68 @@ serviceCore.start((error) => {
 - [设置错误拦截器](#错误拦截器)
 - [自定义构建过程](#构建过程)
 
+## 设置请求路径
+
+处理特定请求路径的客户端请求需要结合[Handler](/guide/request-handler.html)进行。**Handler**有独立于**ServiceCore**的[生命周期和处理流程](/guide/request-handler.html#处理流程)。
+
+客户端请求经过**全局中间件**管道后，将进入与请求路径匹配的**Handler**中执行后续处理。
+
+**我们实现一个Handler至少需要：**
+
+- 指定请求路径规则
+- 指定请求方式（比如：GET、POST）对应的处理逻辑
+
+因此，我们在[自定义Handler](/guide/request-handler.html)时至少需要：
+
+- **实现一个继承自```Core.Handler```的类**
+- **重写```getRoutePath```静态方法**，指定请求路径规则
+- **重写```[METHOD]Handler```实例方法**，指定请求方式对应的处理逻辑
+
+::: warning 注意
+**指定请求路径规则时，需要重写Handler中的静态方法，即```static getRoutePath()```；而实现某个请求方式的处理逻辑时重写的```[METHOD]Handler```是实例方法。**
+
+另外，**```[METHOD]Handler```不是实际重写的方法名，只是Handler Method的代称**，比如：期望处理客户端POST请求时，需要重写**Handler**中的**实例方法**```postHandler```。
+:::
+
+---
+
+接下来，让我们来实现Hello World Handler：
+
+```javascript
+class HelloWorldHandler extends Core.Handler {
+  // 指定请求路径规则
+  static getRoutePath() {
+    return '/HelloWorld.do';
+  }
+  // 指定get请求处理
+  getHandler(req, res, next) {
+    next('Hello World');
+  }
+}
+```
+
+需要注意的是，**Handler必须绑定至ServiceCore才能生效。**
+
+所以，我们还应该使用**ServiceCore**的实例方法```bind()```将**Handler**与**ServiceCore**绑定：
+
+```javascript
+// 实现Hello World Handler
+class HelloWorldHandler extends Core.Handler { ... }
+
+// 创建ServiceCore
+const serviceCore = new Core.ServiceCore();
+// 绑定ServiceCore和Handler
+serviceCore.bind([HelloWorldHandler]);
+// 启动ServiceCore
+serviceCore.start();
+```
+
+**最后，我们使用浏览器打开```http://localhost:3000/HelloWorld.do```就可以检查实现成果啦！**
+
+::: danger 注意
+**ServiceCore实例仅允许在处于关闭状态时执行```bind()```动作，且多次执行```bind()```时将只保留最后一次绑定的Handler。**
+:::
+
 ## 构建过程
 
 **ServiceCore**执行实例方法```start()```时将触发**Web服务**的实际构建，**我们可以通过修改实例属性```createServer```对构建过程进行定制。**
@@ -378,68 +440,6 @@ serviceCore.createServer = (options, app, configs, callBack) => {
   nativeCreateServer(options, app, configs, callBack);
 }
 ```
-
-## 设置请求路径
-
-处理特定请求路径的客户端请求需要结合[Handler](/guide/request-handler.html)进行。**Handler**有独立于**ServiceCore**的[生命周期和处理流程](/guide/request-handler.html#处理流程)。
-
-客户端请求经过**全局中间件**管道后，将进入与请求路径匹配的**Handler**中执行后续处理。
-
-**我们实现一个Handler至少需要：**
-
-- 指定请求路径规则
-- 指定请求方式（比如：GET、POST）对应的处理逻辑
-
-因此，我们在[自定义Handler](/guide/request-handler.html)时至少需要：
-
-- **实现一个继承自```Core.Handler```的类**
-- **重写```getRoutePath```静态方法**，指定请求路径规则
-- **重写```[METHOD]Handler```实例方法**，指定请求方式对应的处理逻辑
-
-::: warning 注意
-**指定请求路径规则时，需要重写Handler中的静态方法，即```static getRoutePath()```；而实现某个请求方式的处理逻辑时重写的```[METHOD]Handler```是实例方法。**
-
-另外，**```[METHOD]Handler```不是实际重写的方法名，只是Handler Method的代称**，比如：期望处理客户端POST请求时，需要重写**Handler**中的**实例方法**```postHandler```。
-:::
-
----
-
-接下来，让我们来实现Hello World Handler：
-
-```javascript
-class HelloWorldHandler extends Core.Handler {
-  // 指定请求路径规则
-  static getRoutePath() {
-    return '/HelloWorld.do';
-  }
-  // 指定get请求处理
-  getHandler(req, res, next) {
-    next('Hello World');
-  }
-}
-```
-
-需要注意的是，**Handler必须绑定至ServiceCore才能生效。**
-
-所以，我们还应该使用**ServiceCore**的实例方法```bind()```将**Handler**与**ServiceCore**绑定：
-
-```javascript
-// 实现Hello World Handler
-class HelloWorldHandler extends Core.Handler { ... }
-
-// 创建ServiceCore
-const serviceCore = new Core.ServiceCore();
-// 绑定ServiceCore和Handler
-serviceCore.bind([HelloWorldHandler]);
-// 启动ServiceCore
-serviceCore.start();
-```
-
-**最后，我们使用浏览器打开```http://localhost:3000/HelloWorld.do```就可以检查实现成果啦！**
-
-::: danger 注意
-**ServiceCore实例仅允许在处于关闭状态时执行```bind()```动作，且多次执行```bind()```时将只保留最后一次绑定的Handler。**
-:::
 
 ## 日志收集
 
